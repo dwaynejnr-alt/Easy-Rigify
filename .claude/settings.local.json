@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python --version 2>$null)",
+      "PowerShell(python -c \"import zstandard; print\\('zstandard available'\\)\" 2>&1)",
+      "PowerShell(\\(Get-Content \"d:\\\\rig_addon_pro\\\\__init__.py\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(python -m py_compile \"d:\\\\rig_addon_pro\\\\__init__.py\" 2>&1)",
+      "PowerShell(if \\($?\\) { \"SYNTAX OK\" } else { \"SYNTAX ERROR\" })"
+    ]
+  }
+}

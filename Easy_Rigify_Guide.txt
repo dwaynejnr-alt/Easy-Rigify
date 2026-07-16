@@ -1,0 +1,203 @@
+===============================================================================
+ EASY RIGIFY - USER GUIDE
+ Marker placement, AI detection & face detection
+===============================================================================
+
+Easy Rigify places the markers for a Rigify metarig, aligns and generates the
+rig, and skins your mesh. This guide covers everything from installing the addon
+to using the AI Body, Finger and Face detection.
+
+
+-------------------------------------------------------------------------------
+ WHAT'S NEW IN THIS UPDATE
+-------------------------------------------------------------------------------
+- AI DETECT FACE (neural) - detects the core face markers automatically.
+- AI Detect Body & Fingers - faster, more robust on stylised characters.
+- Markers are larger and easier to grab, with blue connecting lines that show
+  the layout like a skeleton.
+- Live Symmetry - move a marker on one side and the other side follows.
+- "Hide Markers" now hides the marker icons AND the connecting lines together.
+- Arm markers stay visible after Auto Detect Body.
+- One-click Install / Reinstall / Uninstall for the AI runtime (in Preferences).
+- The trained AI models are encrypted and bundled with the addon.
+
+
+-------------------------------------------------------------------------------
+ 1. REQUIREMENTS
+-------------------------------------------------------------------------------
+- Blender 4.2 or newer.
+- The official Rigify addon enabled (Edit > Preferences > Add-ons > "Rigify").
+- An internet connection ONCE, to install the AI runtime (see section 3).
+- The AI detection runs on the CPU - no special GPU is required.
+
+
+-------------------------------------------------------------------------------
+ 2. INSTALLING THE ADDON
+-------------------------------------------------------------------------------
+1. Open Blender.
+2. Go to  Edit > Preferences > Get Extensions  (or Add-ons).
+3. Click the drop-down arrow (top-right) > "Install from Disk...".
+4. Select the  easy_rigify-x.x.x.zip  file.
+5. Make sure the checkbox next to "Easy Rigify" is ticked (enabled).
+6. Close Preferences. Press N in the 3D Viewport to open the side panel and
+   click the "AutoRig" tab.
+
+NOTE: The three AI models ship inside the addon - you do NOT install them
+separately.
+
+
+-------------------------------------------------------------------------------
+ 3. INSTALLING THE AI RUNTIME (ONNX RUNTIME)  -  ONE TIME
+-------------------------------------------------------------------------------
+The AI models need a small runtime (onnxruntime + Pillow) that is installed once
+into Blender. This requires an internet connection.
+
+1. Go to  Edit > Preferences > Add-ons  and expand "Easy Rigify".
+2. Under "AI Detection (ONNX Runtime)" click  "Install ONNX Runtime".
+3. Wait until it reports  "onnxruntime installed and ready."
+   (The download is a few hundred MB - give it a minute.)
+4. If it asks you to restart, close and reopen Blender.
+
+You only do this once per Blender installation. Afterwards the button shows
+"Reinstall" (to repair) and "Uninstall" (to remove the runtime).
+
+  - No admin rights are needed; it installs into your user folder.
+  - If it fails, open  Window > Toggle System Console  and try again to see the
+    detailed message.
+
+Once installed, Preferences shows:  "onnxruntime + Pillow: Ready".
+
+
+-------------------------------------------------------------------------------
+ 4. THE MARKERS TAB - OVERVIEW
+-------------------------------------------------------------------------------
+Open the "AutoRig" side panel (press N) and select the "Markers" tab.
+
+The typical order of work is:
+   1) Pick your character's Body Mesh.
+   2) AI Detect Body  (or Auto Detect Body).
+   3) AI Detect Fingers  (then Place Fingers).
+   4) Facial Markers  (AI Detect Face, or the step-by-step geometric detectors).
+   5) Check the markers, adjust any by hand.
+   6) Generate the rig (Rig tab).
+
+Markers are EMPTIES. After any detection you can freely grab (G) and move any
+marker to correct it. The blue lines are only a visual guide.
+
+Tips:
+   - "Show / Hide Markers" toggles all markers, their icons and the lines.
+   - "Live Symmetry" (in the Mirror section) mirrors your edits left<->right.
+   - "L->R" / "R->L" copy one side onto the other.
+
+
+-------------------------------------------------------------------------------
+ 5. AI DETECT BODY
+-------------------------------------------------------------------------------
+Detects the spine, shoulders, arms, legs and feet automatically.
+
+1. In the Markers tab, set  "Body Mesh"  to your character's body mesh.
+2. Click  "AI Detect Body".
+3. Wait a few seconds - the body markers snap into place.
+4. Review and nudge any marker that is off (elbows, knees and wrists are the
+   most worth checking on unusual proportions).
+
+If AI is not installed the button will ask you to install the ONNX Runtime
+first (section 3). If a joint lands on the body instead of the limb, drag it
+onto the limb - the rig only needs it roughly correct.
+
+
+-------------------------------------------------------------------------------
+ 6. AI DETECT FINGERS
+-------------------------------------------------------------------------------
+Detects the finger and thumb joints for both hands.
+
+1. Make sure the Body Mesh is set and the hands/wrists are placed.
+2. Click  "AI Detect Fingers".
+3. The camera briefly frames each hand while it works.
+4. Review the fingertips and knuckles; drag any that drifted.
+5. If needed, use  "Place Fingers"  to build the finger marker chains, and
+   the HAND_TIP marker can be dragged to the middle fingertip.
+
+Best results come from hands that are open and not clenched. Very large or very
+stylised hands may need a couple of manual corrections.
+
+
+-------------------------------------------------------------------------------
+ 7. FACE DETECTION
+-------------------------------------------------------------------------------
+Easy Rigify offers TWO ways to place face markers. You can mix them.
+
+A) AI DETECT FACE  (neural - recommended starting point)
+   Places the core face markers in one click: lips, eyes, eyelid creases, brows,
+   nose, cheeks, chin, jaw and ears. (Teeth and tongue are NOT covered by the AI
+   - place those with the geometric steps below.)
+
+   1. Open the Markers tab and expand  "Facial Markers".
+   2. Tick  "Show Facial Markers".
+   3. Set  "Body Mesh"  to the head (or full body) mesh.
+   4. Click  "AI Detect Face".
+   5. The head is framed automatically and the markers are placed on the face.
+   6. Grab (G) and adjust any marker that needs it.
+
+   Notes:
+   - The "AI Detect Face" button appears only when the face model and the ONNX
+     Runtime are installed.
+   - It frames the HEAD automatically, so it works whether you pick just the head
+     mesh or a full-body mesh.
+   - If the character wears hair or a hood that hides the neck, the framing may
+     be off - hide that mesh for the detection, then unhide it.
+
+B) GEOMETRIC DETECTORS  (step by step - full control, plus teeth & tongue)
+   Under "Facial Markers" you first pick the relevant meshes (eyeballs, teeth,
+   tongue, eyebrows) then run the steps in order:
+       Step 1 - Teeth & Tongue
+       Step 2 - Brows & Eyes
+       Step 3 - Lips
+       Step 4 - Nose
+       Step 5 - Eyelids
+       Step 6 - Chin / Cheek / Jaw
+       Step 7 - Forehead
+   Run only the steps you need. Adjust markers by hand afterwards.
+
+   Teeth and tongue are ALWAYS placed with these geometric steps (the AI does
+   not detect them).
+
+
+-------------------------------------------------------------------------------
+ 8. GENERATING THE RIG
+-------------------------------------------------------------------------------
+When the markers look correct:
+   1. Switch to the "Rig" tab.
+   2. Generate / align the metarig to the markers, then generate the Rigify rig.
+   3. Use the "Skin" tab to bind and clean up weights.
+(See the Rig and Skin tabs for the detailed buttons.)
+
+
+-------------------------------------------------------------------------------
+ 9. TROUBLESHOOTING
+-------------------------------------------------------------------------------
+"AI Detect" buttons are greyed out / ask to install
+   -> Install the ONNX Runtime (section 3), then restart Blender.
+
+"Installed, but onnxruntime is not importable yet"
+   -> Restart Blender once. If it persists, open Window > Toggle System Console,
+      click Install again, and read the message.
+
+Markers show up as purple/pink blocks
+   -> Fixed in this update. If you see it, reload the addon (or restart Blender)
+      once.
+
+AI Detect Face captures the whole body / frames too wide
+   -> Make sure the Body Mesh is set to the character (head or full body). If a
+      hair/hood mesh covers the neck, hide it for the detection.
+
+A detected joint sits on the body instead of the limb
+   -> Just drag it onto the limb; the rig only needs it approximately right.
+
+Nothing happens when I click a detect button
+   -> Confirm a Body Mesh is selected and that it is a MESH object.
+
+===============================================================================
+ End of guide. Markers are editable empties - detection gets you 90% there,
+ a few manual nudges finish the job.
+===============================================================================

@@ -1,0 +1,132 @@
+name: build-crypto
+
+# Builds the abi3 _ercrypto model-crypto binaries for every OS and commits them
+# into native/. Run this whenever ercrypto.c or the key changes. The produced
+# binaries are Py_LIMITED_API (abi3), so ONE file per OS/arch loads in every
+# Blender Python (4.2 = 3.11 ... 5.x = 3.13).
+#
+# Trigger: manual (Actions tab -> build-crypto -> Run workflow), or on a push
+# that touches the C source.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "dev/native/ercrypto.c"
+      - "dev/native/setup.py"
+      - ".github/workflows/build-crypto.yml"
+
+# The commit job pushes the built binaries back into native/.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            tag: win_amd64
+            ext: pyd
+          - os: ubuntu-latest
+            tag: linux_x86_64
+            ext: so
+            manylinux: true
+          - os: macos-14           # Apple silicon runner; builds universal2
+            tag: macos_universal2
+            ext: so
+            macos_arch: "arm64;x86_64"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ---- Linux: build inside manylinux2014 for portable glibc ----
+      - name: Build (Linux / manylinux)
+        if: matrix.manylinux
+        run: |
+          docker run --rm -v "$PWD":/io quay.io/pypa/manylinux2014_x86_64 bash -c '
+            /opt/python/cp311-cp311/bin/python -m pip install -U setuptools wheel &&
+            cd /io/dev/native &&
+            /opt/python/cp311-cp311/bin/python setup.py build_ext --build-lib _build
+          '
+          f=$(ls dev/native/_build/_ercrypto*.so | head -1)
+          mkdir -p native
+          cp "$f" "native/_ercrypto_${{ matrix.tag }}.${{ matrix.ext }}"
+
+      # ---- macOS: universal2 (arm64 + x86_64) in one .so ----
+      - name: Build (macOS universal2)
+        if: runner.os == 'macOS'
+        env:
+          ARCHFLAGS: "-arch arm64 -arch x86_64"
+          _PYTHON_HOST_PLATFORM: "macosx-11.0-universal2"
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+        run: |
+          python -m pip install -U setuptools wheel
+          cd dev/native
+          python setup.py build_ext --build-lib _build
+          f=$(ls _build/_ercrypto*.so | head -1)
+          mkdir -p "$GITHUB_WORKSPACE/native"
+          cp "$f" "$GITHUB_WORKSPACE/native/_ercrypto_${{ matrix.tag }}.${{ matrix.ext }}"
+          # sanity: both slices present
+          lipo -info "$GITHUB_WORKSPACE/native/_ercrypto_${{ matrix.tag }}.${{ matrix.ext }}" || true
+
+      # ---- Windows ----
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          python -m pip install -U setuptools wheel
+          cd dev/native
+          python setup.py build_ext --build-lib _build
+          f=$(ls _build/_ercrypto*.pyd | head -1)
+          mkdir -p "$GITHUB_WORKSPACE/native"
+          cp "$f" "$GITHUB_WORKSPACE/native/_ercrypto_${{ matrix.tag }}.${{ matrix.ext }}"
+
+      - name: Smoke-test the binary
+        shell: bash
+        run: |
+          python - <<'PY'
+          import glob, importlib.util, os
+          p = glob.glob("native/_ercrypto_*")[0]
+          spec = importlib.util.spec_from_file_location("_ercrypto", p)
+          m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          assert m.transform(m.transform(b"easy rigify")) == b"easy rigify"
+          print("smoke OK:", p)
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ercrypto-${{ matrix.tag }}
+          path: native/_ercrypto_${{ matrix.tag }}.${{ matrix.ext }}
+
+  # Collect all three binaries and commit them into native/ in one commit.
+  commit:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: _artifacts
+      - name: Assemble native/
+        run: |
+          mkdir -p native
+          find _artifacts -name "_ercrypto_*" -exec cp {} native/ \;
+          ls -la native/
+      - name: Commit binaries
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add native/_ercrypto_*
+          if git diff --cached --quiet; then
+            echo "no changes"; exit 0
+          fi
+          git commit -m "CI: rebuild model-crypto binaries (all platforms)"
+          git push origin HEAD:${{ github.ref_name }}

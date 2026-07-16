@@ -1,0 +1,44 @@
+schema_version = "1.0.0"
+
+id = "easy_rigify"
+version = "1.1.0"
+name = "Easy Rigify"
+tagline = "Place markers, auto-align a Rigify metarig, smart skinning"
+maintainer = "Dwayne Jones"
+type = "add-on"
+
+# Optional link to documentation, support, source files, etc
+# website = "https://blendermarket.com/products/easy-rigify"
+
+tags = ["Rigging", "Animation"]
+
+blender_version_min = "4.2.0"
+# blender_version_max = "5.1.2"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+copyright = [
+  "2024-2026 Dwayne Jones",
+]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "/.git/",
+  "/.github/",
+  "/*.zip",
+  # All training / validation / tooling, plaintext model sources, datasets,
+  # backups and scratch live under dev/ — none of it ships. This INCLUDES the
+  # model-crypto C source (dev/native/ercrypto.c) and the masked-key table;
+  # only the COMPILED binaries in native/ ship.
+  "/dev/",
+  "/.claude/",
+  # Stale full-addon copy + old build zips — must never ship (it also still
+  # contains the OLD model-crypto key/algorithm).
+  "/Backup/",
+  # Safety net: no plaintext models should ever ship (only models/*.rmodel)
+  "/*.onnx",
+  # Stale timestamped model backups (old key) — never ship.
+  "*.rmodel.bak*",
+]

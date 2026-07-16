@@ -1,0 +1,45 @@
+# =========================================================================
+#  Easy Rigify — .gitignore
+#  Keeps the repo to the shippable addon + crypto build source + CI.
+#  Everything heavy (datasets, backups, .blend scenes, training checkpoints)
+#  and everything secret (plaintext models/weights) stays OUT of git.
+# =========================================================================
+
+# ---- Python / OS / editor noise ----
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+*.swp
+
+# ---- Blender assets / packaged builds (multi-GB) ----
+*.blend
+*.blend1
+*.zip
+
+# ---- Stale backups / build intermediates ----
+*.bak
+*.bak_*
+*.rmodel.bak*
+/dev/native/build/
+
+# ---- Model / weight files = IP, never on GitHub ----
+*.pt          # PyTorch training checkpoints
+*.onnx        # plaintext models
+*.pth
+
+# ---- ALL of dev/ is local tooling & datasets EXCEPT the crypto build source ----
+/dev/*
+!/dev/native/
+/dev/native/_build/
+/dev/native/_rmodel_backup_v1/
+
+# ---- Other multi-GB dirs at the repo root ----
+/Backup/
+/face_dataset/
+/debug_face_infer/
+
+# NOTE: these ARE committed on purpose —
+#   models/*.rmodel      (ENCRYPTED, needed to ship)
+#   native/_ercrypto_*   (compiled crypto binaries, committed by CI)
+#   dev/native/*.c,*.py  (crypto build source — THIS IS WHY THE REPO MUST BE PRIVATE)

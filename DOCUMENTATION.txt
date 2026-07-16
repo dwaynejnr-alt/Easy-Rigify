@@ -1,0 +1,329 @@
+========================================================================
+  EASY RIGIFY  —  User Documentation
+  Version 1.1.0  ·  Blender 4.2+
+========================================================================
+
+CONTENTS
+  1.  Introduction
+  2.  Installation
+  3.  The Interface
+  4.  Quick Start (the 5-minute rig)
+  5.  Markers Tab
+        5.1  Pick a Body Mesh
+        5.2  Body Markers
+        5.3  Arm Markers
+        5.4  Finger Markers
+        5.5  Mirror & Live Symmetry
+        5.6  Facial Markers
+        5.7  Diagnostics & Delete
+        5.8  Viewport helpers
+  6.  Rig Tab
+        6.1  Add Meta Rig
+        6.2  Align Rig to Markers
+        6.3  Generate Rig
+        6.4  Regenerate & Custom Preserve
+  7.  Skin Tab
+        7.1  Binding
+        7.2  Surgical weight tightening
+        7.3  Weight cleanup & painting
+  8.  Tools Tab
+        8.1  Fan bones
+        8.2  Visualization
+  9.  Optional AI Detection
+  10. Tips & Troubleshooting
+  11. Getting Help
+
+
+========================================================================
+1.  INTRODUCTION
+========================================================================
+Easy Rigify aligns a Blender Rigify metarig to your character using
+visible markers instead of manual bone editing. You place markers on the
+mesh, the addon snaps the rig to them, generates the Rigify rig, and
+gives you tools to bind and clean the skin weights.
+
+Everything happens in the 3D Viewport sidebar under the "Easy Rigify"
+tab. A status box at the top of the Markers tab always shows the
+recommended next step.
+
+
+========================================================================
+2.  INSTALLATION
+========================================================================
+1. In Blender, open  Edit > Preferences > Add-ons.
+2. Click "Install...", select the Easy Rigify .zip file, and enable it.
+3. Make sure the built-in "Rigify" add-on is also enabled (search for
+   "Rigify" in the same Add-ons list).
+4. Open the 3D Viewport, press N to show the sidebar, and click the
+   "Easy Rigify" tab.
+
+The addon requires Blender 4.2 or newer.
+
+
+========================================================================
+3.  THE INTERFACE
+========================================================================
+The panel is split into four tabs along the top:
+
+  MARKERS — Place markers on body, hands, and face.
+  RIG     — Add the metarig, align it, generate the Rigify rig.
+  SKIN    — Bind the mesh and clean the weights.
+  TOOLS   — Fan bones and viewport utilities.
+
+A "?" Help button (top-right) opens online documentation for the current
+tab. Whenever a marker is selected, an on-screen help image and hint text
+show you where that marker belongs.
+
+
+========================================================================
+4.  QUICK START  (the 5-minute rig)
+========================================================================
+1. Select your character mesh.
+2. MARKERS tab > Body Markers > set "Body Mesh" to your model.
+3. Click "Auto Detect Body". The body/leg markers appear.
+4. Click "Place All Fingers" and place the fingers (2 clicks per finger),
+   or use "AI Detect Fingers" if the AI runtime is installed.
+5. (Optional) Open "Facial Markers" and run the face detect steps.
+6. Click "Check All Markers" to confirm nothing key is missing.
+7. RIG tab > "Human (No Face)" or "Human (With Face)" to add the metarig.
+8. Click "Align Rig to Markers".
+9. Click "Generate Rig".
+10. SKIN tab > bind your mesh and clean the weights.
+
+Done — you have a working Rigify rig aligned to your character.
+
+
+========================================================================
+5.  MARKERS TAB
+========================================================================
+The status box at the top tells you the next recommended action and
+flags problems (no body mesh, missing markers, unapplied scale/rotation,
+etc.). The bottom of the tab shows how many body markers are placed.
+
+--- 5.1  PICK A BODY MESH ------------------------------------------------
+Under "Body Markers", set "Body Mesh" to your character. This mesh is
+remembered and reused by the detectors. IMPORTANT: apply scale and
+rotation on the mesh first (Object > Apply > All Transforms) — unapplied
+scale in particular causes bad alignment and binding.
+
+--- 5.2  BODY MARKERS ----------------------------------------------------
+"① Auto Detect Body" analyses the mesh and places the full body-and-leg
+marker set: pelvis, spine, neck, head, shoulders, arms, elbows, hands,
+thighs, shins, feet, toes, and heels. Marker sizes auto-scale to fit the
+character. The scene is left as-is — no meshes are hidden.
+
+If the AI runtime is installed, a "✦ AI Detect Body" button also appears
+for neural placement on unusual proportions (see section 9).
+
+--- 5.3  ARM MARKERS (optional) -----------------------------------------
+Arms are already placed by Auto Detect Body. If you need to place them
+manually, "Place Arm Markers (3 clicks)" lets you set the shoulder,
+elbow, and hand by clicking on the mesh.
+
+--- 5.4  FINGER MARKERS --------------------------------------------------
+Two ways to place fingers:
+
+  • "② Place All Fingers" — a modal, two-clicks-per-finger workflow:
+      first click = fingertip, second click = knuckle (base joint).
+      The two middle joints are interpolated evenly between them.
+      The right hand is mirrored automatically from the left.
+  • The dropdown (arrow) next to it opens a per-finger picker so you can
+    redo just one finger (thumb, index, middle, ring, pinky) or all.
+
+"Straighten Finger Markers" projects the joints onto each finger's bend
+plane to remove side-to-side wander while keeping the natural curl.
+
+If the AI runtime is installed, "✦ AI Detect Fingers" places all finger
+markers automatically (see section 9). Several sliders in the addon
+preferences tune AI finger placement for thick/thin/stylised hands
+(center radius, palm depth, knuckle radius, chain width tolerance,
+straighten clamp).
+
+--- 5.5  MIRROR & LIVE SYMMETRY -----------------------------------------
+  • "Mirror L→R" copies all left-side markers onto the right.
+  • "R→L" copies right to left.
+  • "Live Symmetry" (toggle): while on, moving a left/right marker moves
+    its mirror counterpart automatically, across the character's own
+    symmetry plane. Turn it off for asymmetric characters.
+
+--- 5.6  FACIAL MARKERS --------------------------------------------------
+Open the "⑥ Facial Markers" section and toggle "Show Facial Markers".
+
+  1. SELECT MESHES: point the addon at the relevant objects so detection
+     is accurate:
+       - Body Mesh (the face/head mesh)
+       - Eyeball  — one mesh, or separate Left/Right eye meshes
+       - Tongue
+       - Teeth    — one mesh, or separate Top/Bottom
+       - Eyebrow  — one mesh, or separate Left/Right brows
+     Enable only the parts your character actually has.
+
+  2. DETECT STEP BY STEP: run the detectors in order. Each places one
+     region so you stay in control:
+       Step 1 — Teeth & Tongue
+       Step 2 — Brows & Eyes
+       Step 3 — Lips
+       Step 4 — Nose
+       Step 5 — Eyelids
+       Step 6 — Chin / Cheek / Jaw
+       Step 7 — Forehead
+
+Detected markers land on the mesh surface (eyelid and lip markers are
+tucked a couple of millimetres inside so they follow the skin). Correct
+any marker by hand, then use Mirror to copy a good side across.
+
+--- 5.7  DIAGNOSTICS & DELETE -------------------------------------------
+  • "Check All Markers" reports any missing or misplaced key markers so
+    you catch problems before aligning.
+  • "Delete All Markers" clears every marker from the scene.
+
+--- 5.8  VIEWPORT HELPERS ------------------------------------------------
+The Viewport box gives you:
+  • Show / Hide Markers — hides the empties, their icons, AND their
+    connection lines together.
+  • X-Ray toggle — see markers through the mesh.
+  • Mesh Selection toggle — lock the mesh so you only grab markers.
+  • Marker Hints toggle — on-screen placement hints.
+  • Marker Size slider (+ apply button) — resize all marker empties.
+
+
+========================================================================
+6.  RIG TAB
+========================================================================
+
+--- 6.1  ADD META RIG ----------------------------------------------------
+  • "Human (No Face)"   — body-only Rigify metarig.
+  • "Human (With Face)" — body + facial rig metarig.
+Pick the one that matches whether you placed facial markers. (These are
+also available from Add > Armature in the viewport.)
+
+--- 6.2  ALIGN RIG TO MARKERS -------------------------------------------
+"Align Rig to Markers" snaps every metarig bone onto your markers: pelvis
+and spine chain, neck (split), head, shoulders, arms, hands, palms,
+fingers, legs, and feet — including bone rolls derived from the mesh
+surface for correct joint orientation. Run this after the metarig is
+added and your markers are placed.
+
+Note: aligning consumes the markers. Place and check them all first.
+
+--- 6.3  GENERATE RIG ----------------------------------------------------
+"Generate Rig" runs Rigify to build the final animation control rig from
+the aligned metarig.
+
+--- 6.4  REGENERATE & CUSTOM PRESERVE -----------------------------------
+Lets you edit the metarig and regenerate the Rigify rig without losing
+custom changes:
+  • Set "Metarig" and "Generated Rig".
+  • "Backup" stores your custom edits; "Restore" brings them back.
+  • "Regenerate & Preserve" rebuilds the rig and re-applies the backup.
+
+A "Report a Bug" button at the bottom opens the bug-report link.
+
+
+========================================================================
+7.  SKIN TAB
+========================================================================
+Binds your mesh to the generated rig and cleans up the deformation.
+
+--- 7.1  BINDING ---------------------------------------------------------
+Detect your meshes, then bind. "Smart Bind" runs an automated binding
+pipeline; "Unbind" removes it. "Cleanup Weights" tidies the result.
+
+--- 7.2  SURGICAL WEIGHT TIGHTENING -------------------------------------
+When using the pipeline bind, a per-region "surgical" tightener sharpens
+weights around specific areas:
+    fingers · forearms · upper arms · shins · thighs · shoulders ·
+    spine · neck
+Each region has an on/off toggle and a "feather" amount. Presets
+(DEFAULT / GENTLE / AGGRESSIVE) set sensible values. Spine and neck are
+off by default in the presets — enable them manually if needed.
+
+--- 7.3  WEIGHT CLEANUP & PAINTING --------------------------------------
+A full weight toolkit:
+  • Joint-bleed analysis and repair, weight smoothing (joints & twist).
+  • Symmetrize weights across the mesh.
+  • Prune tiny weights, remove unused vertex groups, select unweighted
+    or over-influenced vertices, clamp per-bone influence.
+  • Guided Enter/Exit weight-paint, deform-bone visibility toggle, and
+    bone-region selection helpers.
+
+
+========================================================================
+8.  TOOLS TAB
+========================================================================
+
+--- 8.1  FAN BONES -------------------------------------------------------
+Generate fan/helper bones for smoother deformation at the joints, and
+remove them again when needed.
+
+--- 8.2  VISUALIZATION ---------------------------------------------------
+Viewport and shading helpers for inspecting weights and deformation.
+
+
+========================================================================
+9.  OPTIONAL AI DETECTION
+========================================================================
+Easy Rigify includes optional on-device neural detectors for the body
+and fingers. They are NOT required — the full geometric workflow works
+without them.
+
+INSTALL / UNINSTALL
+  • Open  Edit > Preferences > Add-ons > Easy Rigify.
+  • Click "Install AI Dependencies". This downloads a small on-device
+    AI runtime.
+  • RESTART BLENDER after installing so the runtime activates.
+  • An "Uninstall" button removes it again if you don't want it.
+
+Everything runs locally on your machine; nothing is uploaded.
+
+WHAT IT UNLOCKS
+  • "✦ AI Detect Body"    — neural body-marker placement (appears in the
+                            Body Markers box once installed).
+  • "✦ AI Detect Fingers" — neural finger-marker placement.
+
+If the runtime isn't installed or hasn't been activated by a restart,
+these buttons simply don't appear, and you use the standard geometric
+detectors instead.
+
+
+========================================================================
+10.  TIPS & TROUBLESHOOTING
+========================================================================
+• APPLY TRANSFORMS FIRST. Unapplied scale or rotation on the body mesh is
+  the #1 cause of bad alignment and binding. Object > Apply > All
+  Transforms before detecting.
+
+• USE THE STATUS BOX. The "Next:" line on the Markers tab tells you the
+  recommended next step; the "Fix:" line flags problems.
+
+• CHECK BEFORE YOU ALIGN. Run "Check All Markers" first — aligning
+  consumes the markers, so make sure they're all correct.
+
+• MIRROR TO SAVE TIME. Place/refine one side, then Mirror it across. Use
+  Live Symmetry for real-time symmetric adjustments.
+
+• FINGERS: TIP THEN KNUCKLE. First click is the fingertip, second is the
+  base knuckle. The middle joints are filled in automatically.
+
+• FACE DETECTION NEEDS THE RIGHT MESHES. Assign the eyeball, tongue,
+  teeth, and brow objects in "Select Meshes" for accurate results, and
+  enable only the parts your character has.
+
+• AI BUTTONS MISSING? Install the AI dependencies in preferences and
+  restart Blender. If they still don't show, check the system console
+  for install output.
+
+• MARKERS HARD TO GRAB? Turn on X-Ray, enable Mesh Selection lock so you
+  only select markers, and increase Marker Size.
+
+
+========================================================================
+11.  GETTING HELP
+========================================================================
+• The "?" Help button at the top of each tab opens that tab's online
+  documentation.
+• "Report a Bug" (Rig tab) opens the bug-report page.
+• Selected markers always show an on-screen hint and help image telling
+  you where they go.
+
+========================================================================

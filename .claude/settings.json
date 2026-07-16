@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('d:/rig_addon_pro/pipeline.py', encoding='utf-8'\\).read\\(\\)\\); print\\('pipeline.py OK'\\)\")",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('d:/rig_addon_pro/weight_tools.py', encoding='utf-8'\\).read\\(\\)\\); print\\('weight_tools.py OK'\\)\")",
+      "Read(//c/Users/offic/AppData/Local/Temp/claude/d--rig-addon-pro/**)",
+      "PowerShell(python -c \"import ast; ast.parse\\(open\\('d:/rig_addon_pro/markers.py', encoding='utf-8'\\).read\\(\\)\\); print\\('markers.py OK'\\)\" 2>&1)",
+      "Read(//c/Users/offic/.claude/projects/d--rig-addon-pro/**)",
+      "PowerShell(python C:\\\\Temp\\\\check_gaps.py)",
+      "PowerShell(python \"C:\\\\Temp\\\\extract_original.py\" 2>&1)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Read(//c/Users/offic/.claude/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Temp"
+    ]
+  }
+}

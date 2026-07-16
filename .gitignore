@@ -6,8 +6,14 @@
 # =========================================================================
 
 # ---- Python / OS / editor noise ----
+# NOTE: intentionally *.pyc / *.pyo only (NOT the *.py[cod] shorthand) — that
+# bracket pattern also matches *.pyd, which is exactly the compiled Windows
+# crypto binary this repo needs to ship (native/_ercrypto_win_amd64.pyd). It
+# silently ate that file from both the first local commit and CI's commit-back
+# step. Never use *.py[cod] in this repo.
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
 .DS_Store
 Thumbs.db
 *.swp

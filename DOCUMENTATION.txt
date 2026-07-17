@@ -28,7 +28,8 @@ CONTENTS
   8.  Tools Tab
         8.1  Fan bones
         8.2  Visualization
-  9.  Optional AI Detection
+  9.  EasyDetect (AI Detection)
+        9.1  Easy Rigify Lite
   10. Tips & Troubleshooting
   11. Getting Help
 
@@ -256,29 +257,40 @@ Viewport and shading helpers for inspecting weights and deformation.
 
 
 ========================================================================
-9.  OPTIONAL AI DETECTION
+9.  EASYDETECT (AI DETECTION)
 ========================================================================
-Easy Rigify includes optional on-device neural detectors for the body
-and fingers. They are NOT required — the full geometric workflow works
+Easy Rigify includes on-device neural detectors for the body, fingers,
+and face. They are NOT required — the full geometric workflow works
 without them.
 
-INSTALL / UNINSTALL
-  • Open  Edit > Preferences > Add-ons > Easy Rigify.
-  • Click "Install AI Dependencies". This downloads a small on-device
-    AI runtime.
-  • RESTART BLENDER after installing so the runtime activates.
-  • An "Uninstall" button removes it again if you don't want it.
+There is nothing to install. The AI runtime ships inside the addon and
+Blender sets it up automatically when you enable Easy Rigify.
 
 Everything runs locally on your machine; nothing is uploaded.
 
 WHAT IT UNLOCKS
-  • "✦ AI Detect Body"    — neural body-marker placement (appears in the
-                            Body Markers box once installed).
-  • "✦ AI Detect Fingers" — neural finger-marker placement.
+  • "✦ EasyDetect Body"    — neural body-marker placement.
+  • "✦ EasyDetect Fingers" — neural finger-marker placement.
+  • "✦ AI Detect Face"     — neural face-landmark placement.
 
-If the runtime isn't installed or hasn't been activated by a restart,
-these buttons simply don't appear, and you use the standard geometric
-detectors instead.
+If the runtime can't load on your platform, these buttons simply don't
+appear and the geometric detectors are used instead.
+
+--- 9.1  EASY RIGIFY LITE ------------------------------------------------
+Easy Rigify Lite is the same addon without the AI: no neural models and
+no AI runtime, which makes the download about 200x smaller. Everything
+else is identical.
+
+In Lite you get the geometric detectors only:
+  • "① Auto Detect Body"          — body markers from mesh geometry.
+  • "✦ Detect Fingers (Geometric)" — the mesh-only geodesic engine.
+  • "Detect Face Landmarks"        — face markers by mesh raycasting.
+
+The EasyDetect buttons and the finger-engine switch don't appear in
+Lite, and Preferences shows "Easy Rigify Lite — geometric detection
+only". Scenes are fully compatible between the two editions: a .blend
+saved with the full version opens in Lite and simply uses the geometric
+engine. The two editions cannot be installed at the same time.
 
 
 ========================================================================

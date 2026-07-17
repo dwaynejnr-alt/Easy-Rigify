@@ -40,6 +40,7 @@ import os
 
 # ── Submodule imports ─────────────────────────────────────────────────────────
 from . import utils
+from .constants import LITE_BUILD
 
 from .markers import (
     AutoRigFaceObjProps,
@@ -461,7 +462,9 @@ def register():
                 "(tips + outer knuckles) then REBUILDS the hand from an "
                 "always-valid template - knuckle row forced ordered/spaced, "
                 "phalanges at fixed ratios. Can't collapse or cross fingers")],
-        default='AUTO',
+        # Lite ships no neural models, so AUTO (neural evidence + template)
+        # has nothing to run — default to the mesh-only engine there.
+        default='GEOMETRIC' if LITE_BUILD else 'AUTO',
         description="Which engine Detect Fingers uses")
     bpy.types.Scene.finger_engine_advanced = bpy.props.BoolProperty(
         name="Advanced Engines",

@@ -1,5 +1,6 @@
 # constants.py — Marker definitions, bone maps, and size configurations for Easy Rigify.
 import os as _os
+import glob as _glob
 
 from mathutils import Vector, Matrix
 
@@ -17,6 +18,19 @@ def dbg(*args, **kwargs):
     """Console print gated on EASY_RIGIFY_DEBUG (off by default)."""
     if DEBUG:
         print(*args, **kwargs)
+
+
+# ── Edition (Full vs Lite) ────────────────────────────────────────────────────
+# The Lite edition ships the same Python modules but WITHOUT the neural models
+# (models/*.rmodel) and without the bundled onnxruntime/Pillow wheels — see
+# dev/build_lite.py. Everything AI-driven is then unavailable, so the edition is
+# detected from what is actually on disk rather than a hand-edited flag that can
+# drift out of sync with the package. Detection mirrors _DEV_BUILD in __init__.py
+# (a build is what its folder contains), so no ship-time step has to be
+# remembered. The AI code still imports fine in Lite — every onnxruntime import
+# is lazy — it simply has no models to run.
+LITE_BUILD = not _glob.glob(_os.path.join(
+    _os.path.dirname(_os.path.abspath(__file__)), "models", "*.rmodel"))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONSTANTS

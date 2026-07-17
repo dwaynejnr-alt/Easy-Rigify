@@ -17,7 +17,7 @@ except ImportError:
     _batch_for_shader = None
 
 from .constants import (
-    dbg,
+    dbg, LITE_BUILD,
     BODY_SIZE, ARM_SIZE, FINGER_SIZE, FACE_SIZE,
     TIP_EXTEND, FOOT_Y, HEEL_X, HEEL_Y,
     ARM_MARKER_BASES, FINGER_PREFIXES, FINGER_01_BONES, FINGER_BASE_NAMES,
@@ -5142,11 +5142,17 @@ def draw_markers_tab(layout, context):
     # + template + geometric takeover; enum key 'AUTO') and Geometric (explicit
     # mesh-only override with its own sliders). Neural/Template remain in the
     # enum for dev/regression use but are not exposed in the UI.
-    if hasattr(scene, "finger_detection_engine"):
+    # Lite has no models, so there is no choice to offer — the geometric engine
+    # is the only one that can run and the toggle would be a dead control.
+    if hasattr(scene, "finger_detection_engine") and not LITE_BUILD:
         eng_row = fing_col.row(align=True)
         eng_row.prop_enum(scene, "finger_detection_engine", 'AUTO', text="EasyDetect")
         eng_row.prop_enum(scene, "finger_detection_engine", 'GEOMETRIC', text="Geometric")
-    _fing_eng = getattr(scene, "finger_detection_engine", 'AUTO')
+    # Mirrors ai_detect.effective_finger_engine(): a .blend saved with the Full
+    # edition can still hold AUTO here, and Lite will run GEOMETRIC regardless —
+    # so the panel must show the sliders that actually apply.
+    _fing_eng = 'GEOMETRIC' if LITE_BUILD else getattr(
+        scene, "finger_detection_engine", 'AUTO')
     if _fing_eng == 'GEOMETRIC':
         # Geometric-only options: the wrist auto-snap moves the HAND marker
         # onto the mesh wrist (the geodesic walk starts there); Auto/template
@@ -5684,10 +5690,18 @@ class AUTORIG_Prefs(bpy.types.AddonPreferences):
         # the user to install/uninstall; this is a status line only.
         layout.separator()
         ai_box = layout.box()
-        ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
-        if _ai.is_available():
+        if LITE_BUILD:
+            # Lite ships no models at all, so the deps status would be both
+            # irrelevant and alarming ("not available on this platform" reads
+            # as a broken install rather than the edition working as sold).
+            ai_box.label(text="Easy Rigify Lite", icon='SHADERFX')
+            ai_box.label(text="Geometric detection only — this edition")
+            ai_box.label(text="ships without the EasyDetect AI models.")
+        elif _ai.is_available():
+            ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
             ai_box.label(text="onnxruntime + Pillow: Ready", icon='CHECKMARK')
         else:
+            ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
             ai_box.label(text="onnxruntime + Pillow: not available on this",
                          icon='ERROR')
             ai_box.label(text="platform/Blender version — using the")

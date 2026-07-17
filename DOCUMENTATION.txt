@@ -11,12 +11,11 @@ CONTENTS
   5.  Markers Tab
         5.1  Pick a Body Mesh
         5.2  Body Markers
-        5.3  Arm Markers
-        5.4  Finger Markers
-        5.5  Mirror & Live Symmetry
-        5.6  Facial Markers
-        5.7  Diagnostics & Delete
-        5.8  Viewport helpers
+        5.3  Finger Markers
+        5.4  Mirror & Live Symmetry
+        5.5  Facial Markers
+        5.6  Diagnostics & Delete
+        5.7  Viewport helpers
   6.  Rig Tab
         6.1  Add Meta Rig
         6.2  Align Rig to Markers
@@ -29,7 +28,8 @@ CONTENTS
   8.  Tools Tab
         8.1  Fan bones
         8.2  Visualization
-  9.  Optional AI Detection
+  9.  EasyDetect (AI Detection)
+        9.1  Easy Rigify Lite
   10. Tips & Troubleshooting
   11. Getting Help
 
@@ -96,9 +96,9 @@ Done — you have a working Rigify rig aligned to your character.
 ========================================================================
 5.  MARKERS TAB
 ========================================================================
-The status box at the top tells you the next recommended action and
-flags problems (no body mesh, missing markers, unapplied scale/rotation,
-etc.). The bottom of the tab shows how many body markers are placed.
+The bottom of the tab shows how many body markers are placed. To check
+your markers for problems (missing, overlapping, or sitting outside the
+mesh), use "Check All Markers" — see section 5.6.
 
 --- 5.1  PICK A BODY MESH ------------------------------------------------
 Under "Body Markers", set "Body Mesh" to your character. This mesh is
@@ -115,12 +115,7 @@ character. The scene is left as-is — no meshes are hidden.
 If the AI runtime is installed, a "✦ AI Detect Body" button also appears
 for neural placement on unusual proportions (see section 9).
 
---- 5.3  ARM MARKERS (optional) -----------------------------------------
-Arms are already placed by Auto Detect Body. If you need to place them
-manually, "Place Arm Markers (3 clicks)" lets you set the shoulder,
-elbow, and hand by clicking on the mesh.
-
---- 5.4  FINGER MARKERS --------------------------------------------------
+--- 5.3  FINGER MARKERS --------------------------------------------------
 Two ways to place fingers:
 
   • "② Place All Fingers" — a modal, two-clicks-per-finger workflow:
@@ -139,14 +134,14 @@ preferences tune AI finger placement for thick/thin/stylised hands
 (center radius, palm depth, knuckle radius, chain width tolerance,
 straighten clamp).
 
---- 5.5  MIRROR & LIVE SYMMETRY -----------------------------------------
+--- 5.4  MIRROR & LIVE SYMMETRY -----------------------------------------
   • "Mirror L→R" copies all left-side markers onto the right.
   • "R→L" copies right to left.
   • "Live Symmetry" (toggle): while on, moving a left/right marker moves
     its mirror counterpart automatically, across the character's own
     symmetry plane. Turn it off for asymmetric characters.
 
---- 5.6  FACIAL MARKERS --------------------------------------------------
+--- 5.5  FACIAL MARKERS --------------------------------------------------
 Open the "⑥ Facial Markers" section and toggle "Show Facial Markers".
 
   1. SELECT MESHES: point the addon at the relevant objects so detection
@@ -172,12 +167,13 @@ Detected markers land on the mesh surface (eyelid and lip markers are
 tucked a couple of millimetres inside so they follow the skin). Correct
 any marker by hand, then use Mirror to copy a good side across.
 
---- 5.7  DIAGNOSTICS & DELETE -------------------------------------------
-  • "Check All Markers" reports any missing or misplaced key markers so
-    you catch problems before aligning.
+--- 5.6  DIAGNOSTICS & DELETE -------------------------------------------
+  • "Check All Markers" reports missing markers, markers sitting on top
+    of each other, and markers that ended up outside the mesh — so you
+    catch problems before aligning. Results appear in the Info bar.
   • "Delete All Markers" clears every marker from the scene.
 
---- 5.8  VIEWPORT HELPERS ------------------------------------------------
+--- 5.7  VIEWPORT HELPERS ------------------------------------------------
 The Viewport box gives you:
   • Show / Hide Markers — hides the empties, their icons, AND their
     connection lines together.
@@ -261,29 +257,40 @@ Viewport and shading helpers for inspecting weights and deformation.
 
 
 ========================================================================
-9.  OPTIONAL AI DETECTION
+9.  EASYDETECT (AI DETECTION)
 ========================================================================
-Easy Rigify includes optional on-device neural detectors for the body
-and fingers. They are NOT required — the full geometric workflow works
+Easy Rigify includes on-device neural detectors for the body, fingers,
+and face. They are NOT required — the full geometric workflow works
 without them.
 
-INSTALL / UNINSTALL
-  • Open  Edit > Preferences > Add-ons > Easy Rigify.
-  • Click "Install AI Dependencies". This downloads a small on-device
-    AI runtime.
-  • RESTART BLENDER after installing so the runtime activates.
-  • An "Uninstall" button removes it again if you don't want it.
+There is nothing to install. The AI runtime ships inside the addon and
+Blender sets it up automatically when you enable Easy Rigify.
 
 Everything runs locally on your machine; nothing is uploaded.
 
 WHAT IT UNLOCKS
-  • "✦ AI Detect Body"    — neural body-marker placement (appears in the
-                            Body Markers box once installed).
-  • "✦ AI Detect Fingers" — neural finger-marker placement.
+  • "✦ EasyDetect Body"    — neural body-marker placement.
+  • "✦ EasyDetect Fingers" — neural finger-marker placement.
+  • "✦ AI Detect Face"     — neural face-landmark placement.
 
-If the runtime isn't installed or hasn't been activated by a restart,
-these buttons simply don't appear, and you use the standard geometric
-detectors instead.
+If the runtime can't load on your platform, these buttons simply don't
+appear and the geometric detectors are used instead.
+
+--- 9.1  EASY RIGIFY LITE ------------------------------------------------
+Easy Rigify Lite is the same addon without the AI: no neural models and
+no AI runtime, which makes the download about 200x smaller. Everything
+else is identical.
+
+In Lite you get the geometric detectors only:
+  • "① Auto Detect Body"          — body markers from mesh geometry.
+  • "✦ Detect Fingers (Geometric)" — the mesh-only geodesic engine.
+  • "Detect Face Landmarks"        — face markers by mesh raycasting.
+
+The EasyDetect buttons and the finger-engine switch don't appear in
+Lite, and Preferences shows "Easy Rigify Lite — geometric detection
+only". Scenes are fully compatible between the two editions: a .blend
+saved with the full version opens in Lite and simply uses the geometric
+engine. The two editions cannot be installed at the same time.
 
 
 ========================================================================
@@ -293,11 +300,10 @@ detectors instead.
   the #1 cause of bad alignment and binding. Object > Apply > All
   Transforms before detecting.
 
-• USE THE STATUS BOX. The "Next:" line on the Markers tab tells you the
-  recommended next step; the "Fix:" line flags problems.
-
 • CHECK BEFORE YOU ALIGN. Run "Check All Markers" first — aligning
-  consumes the markers, so make sure they're all correct.
+  consumes the markers, so make sure they're all correct. It reports
+  missing markers, overlapping markers, and markers left outside the
+  mesh.
 
 • MIRROR TO SAVE TIME. Place/refine one side, then Mirror it across. Use
   Live Symmetry for real-time symmetric adjustments.

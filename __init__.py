@@ -19,7 +19,7 @@
 bl_info = {
     "name": "Easy Rigify",
     "author": "Dwayne Jones",
-    "version": (1, 1, 0),
+    "version": (1, 2, 0),
     "blender": (4, 2, 0),
     "location": "View3D > Sidebar > Easy Rigify",
     "description": "Place markers then auto-align a Rigify metarig",
@@ -40,6 +40,7 @@ import os
 
 # ── Submodule imports ─────────────────────────────────────────────────────────
 from . import utils
+from .constants import LITE_BUILD
 
 from .markers import (
     AutoRigFaceObjProps,
@@ -86,7 +87,6 @@ from .ai_detect import (
 from .fingers import (
     AUTORIG_OT_PlaceFingerMarkers,
     AUTORIG_OT_StraightenFingerMarkers,
-    AUTORIG_OT_PlaceArmMarkers,
     AUTORIG_OT_DetectFingers,
     AUTORIG_PT_FingerPicker,
 )
@@ -254,7 +254,6 @@ CLASSES = (
     AUTORIG_OT_AutoDetectArms,
     AUTORIG_OT_PlaceFingerMarkers,
     AUTORIG_OT_StraightenFingerMarkers,
-    AUTORIG_OT_PlaceArmMarkers,
     AUTORIG_OT_DetectFingers,
     AUTORIG_OT_MirrorMarkers,
     AUTORIG_OT_CheckMarkers,
@@ -463,7 +462,9 @@ def register():
                 "(tips + outer knuckles) then REBUILDS the hand from an "
                 "always-valid template - knuckle row forced ordered/spaced, "
                 "phalanges at fixed ratios. Can't collapse or cross fingers")],
-        default='AUTO',
+        # Lite ships no neural models, so AUTO (neural evidence + template)
+        # has nothing to run — default to the mesh-only engine there.
+        default='GEOMETRIC' if LITE_BUILD else 'AUTO',
         description="Which engine Detect Fingers uses")
     bpy.types.Scene.finger_engine_advanced = bpy.props.BoolProperty(
         name="Advanced Engines",

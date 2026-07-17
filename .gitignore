@@ -34,9 +34,12 @@ Thumbs.db
 *.onnx        # plaintext models
 *.pth
 
-# ---- ALL of dev/ is local tooling & datasets EXCEPT the crypto build source ----
+# ---- ALL of dev/ is local tooling & datasets EXCEPT the crypto build source
+#      and the Lite build script (both are ship recipes — losing them means an
+#      edition can't be rebuilt) ----
 /dev/*
 !/dev/native/
+!/dev/build_lite.py
 /dev/native/_build/
 /dev/native/_rmodel_backup_v1/
 
@@ -49,5 +52,6 @@ Thumbs.db
 #   models/*.rmodel      (ENCRYPTED, needed to ship)
 #   native/_ercrypto_*   (compiled crypto binaries, committed by CI)
 #   dev/native/*.c,*.py  (crypto build source — THIS IS WHY THE REPO MUST BE PRIVATE)
+#   dev/build_lite.py    (builds the Lite edition — see section 9.1 of DOCUMENTATION.txt)
 #   wheels/*.whl         (bundled onnxruntime + Pillow, ~153MB — see
 #                          blender_manifest.toml `wheels=` and dev/native/download_wheels.py)

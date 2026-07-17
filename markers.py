@@ -17,7 +17,7 @@ except ImportError:
     _batch_for_shader = None
 
 from .constants import (
-    dbg,
+    dbg, LITE_BUILD,
     BODY_SIZE, ARM_SIZE, FINGER_SIZE, FACE_SIZE,
     TIP_EXTEND, FOOT_Y, HEEL_X, HEEL_Y,
     ARM_MARKER_BASES, FINGER_PREFIXES, FINGER_01_BONES, FINGER_BASE_NAMES,
@@ -5018,9 +5018,37 @@ _STATUS_KEY_MARKERS = ["PELVIS", "NECK", "HEAD",
                        "THIGH_L", "THIGH_R", "FOOT_L", "FOOT_R"]
 
 
+def _markers_outside_mesh(body):
+    """Body markers (RigifyMarkers collection) whose world position falls outside
+    the body mesh's bounding box — usually a bad Auto Detect or an accidental drag.
+    A small margin (4% of the mesh's largest bbox dimension) avoids false positives
+    for markers that sit right on the surface."""
+    col = bpy.data.collections.get("RigifyMarkers")
+    if not col or body is None or body.type != 'MESH':
+        return []
+
+    corners = [body.matrix_world @ Vector(c) for c in body.bound_box]
+    xs = [c.x for c in corners]
+    ys = [c.y for c in corners]
+    zs = [c.z for c in corners]
+    margin = 0.04 * max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs), 1e-6)
+    lo = (min(xs) - margin, min(ys) - margin, min(zs) - margin)
+    hi = (max(xs) + margin, max(ys) + margin, max(zs) + margin)
+
+    out = []
+    for obj in col.objects:
+        if not obj.name.startswith("MARKER_"):
+            continue
+        p = obj.matrix_world.translation
+        if not (lo[0] <= p.x <= hi[0] and lo[1] <= p.y <= hi[1] and lo[2] <= p.z <= hi[2]):
+            out.append(obj.name[len("MARKER_"):])
+    return out
+
+
 def _compute_marker_status(context):
-    """Cheap workflow snapshot for the preflight box: body mesh, missing key markers,
-    unapplied transforms, rig state, and the recommended next step."""
+    """Workflow snapshot used by the Check All Markers operator: body mesh, missing
+    key markers, markers outside the mesh, unapplied transforms, and rig state.
+    Runs on explicit user action only — nothing draws it passively."""
     scene = context.scene
     props = getattr(scene, "autorig_face_objs", None)
     body  = getattr(props, "detect_body_obj", None) if props else None
@@ -5031,6 +5059,7 @@ def _compute_marker_status(context):
         body = act if (act and act.type == 'MESH' and not act.get("autorig_marker")) else None
 
     missing = [m for m in _STATUS_KEY_MARKERS if f"MARKER_{m}" not in bpy.data.objects]
+    outside = _markers_outside_mesh(body)
 
     # Unapplied transforms on the body mesh (scale especially poisons binding).
     xform = None
@@ -5050,46 +5079,7 @@ def _compute_marker_status(context):
             rig_state = "metarig"
 
     return {"body": body.name if body else None,
-            "missing": missing, "xform": xform, "rig_state": rig_state}
-
-
-def _draw_status_box(layout, context, placed, total):
-    """Compact one-line preflight: the recommended next step, plus a single short
-    problem summary only when something actually needs attention."""
-    st   = _panel_cache.get("status") or {}
-    miss = st.get("missing") or []
-    rs   = st.get("rig_state", "none")
-
-    problems = []
-    if not st.get("body"):
-        problems.append("no body mesh")
-    if placed == 0:
-        problems.append("no markers")
-    elif miss:
-        problems.append(f"{len(miss)} key marker(s) missing")
-    if st.get("xform"):
-        problems.append(f"apply {st['xform']}")
-
-    if not st.get("body"):
-        nxt = "Pick a Body Mesh"
-    elif placed == 0:
-        nxt = "Auto Detect Body"
-    elif miss:
-        nxt = "Place the missing markers"
-    elif rs == "none":
-        nxt = "Add a Rigify metarig"
-    elif rs == "metarig":
-        nxt = "Align Rig to Markers → Generate"
-    else:
-        nxt = "Rig ready — bind in the Skin tab"
-
-    box = layout.box()
-    box.row().label(text=f"Next: {nxt}",
-                    icon='ERROR' if problems else 'FORWARD')
-    if problems:
-        p = box.row()
-        p.scale_y = 0.7
-        p.label(text="Fix: " + " · ".join(problems))
+            "missing": missing, "outside": outside, "xform": xform, "rig_state": rig_state}
 
 
 def draw_markers_tab(layout, context):
@@ -5104,7 +5094,6 @@ def draw_markers_tab(layout, context):
         _panel_cache["placed"] = sum(1 for n, *_ in ALL_MARKERS
                                      if f"MARKER_{n}" in bpy.data.objects)
         _panel_cache["onnx"]   = _ai.is_body_onnx_available()
-        _panel_cache["status"] = _compute_marker_status(context)
         _panel_cache["t"]      = now
 
     placed   = _panel_cache["placed"]
@@ -5112,10 +5101,6 @@ def draw_markers_tab(layout, context):
     total      = len(ALL_MARKERS)
     marker_col = get_marker_col()
     hidden     = bool(marker_col and marker_col.hide_viewport)
-
-    # ── Preflight / status (reads scene state, flags problems, suggests next step) ──
-    _draw_status_box(layout, context, placed, total)
-    layout.separator()
 
     # ── ① Body markers ────────────────────────────────────────────────────
     body_box = layout.box()
@@ -5143,25 +5128,6 @@ def draw_markers_tab(layout, context):
 
     layout.separator()
 
-    # ── Arm markers (manual / optional — arms are placed by Auto Detect Body) ──
-    arm_box  = layout.box()
-    sh_icon  = get_icon("Sh")
-    if sh_icon:
-        arm_box.label(text="Arm Markers  (optional)", icon_value=sh_icon)
-    else:
-        arm_box.label(text="Arm Markers  (optional)", icon='BONE_DATA')
-    arm_col = arm_box.column(align=True)
-    arm_col.scale_y = 1.2
-    hand_icon = get_icon("Hand")
-    if hand_icon:
-        arm_col.operator("autorig.place_arm_markers",
-                         text="   Place Arm Markers  (3 clicks)", icon_value=hand_icon)
-    else:
-        arm_col.operator("autorig.place_arm_markers",
-                         text="   Place Arm Markers  (3 clicks)", icon='BONE_DATA')
-
-    layout.separator()
-
     # ── ② Finger markers ──────────────────────────────────────────────────
     fing_box      = layout.box()
     fing_lbl_icon = get_icon("Finger")
@@ -5176,11 +5142,17 @@ def draw_markers_tab(layout, context):
     # + template + geometric takeover; enum key 'AUTO') and Geometric (explicit
     # mesh-only override with its own sliders). Neural/Template remain in the
     # enum for dev/regression use but are not exposed in the UI.
-    if hasattr(scene, "finger_detection_engine"):
+    # Lite has no models, so there is no choice to offer — the geometric engine
+    # is the only one that can run and the toggle would be a dead control.
+    if hasattr(scene, "finger_detection_engine") and not LITE_BUILD:
         eng_row = fing_col.row(align=True)
         eng_row.prop_enum(scene, "finger_detection_engine", 'AUTO', text="EasyDetect")
         eng_row.prop_enum(scene, "finger_detection_engine", 'GEOMETRIC', text="Geometric")
-    _fing_eng = getattr(scene, "finger_detection_engine", 'AUTO')
+    # Mirrors ai_detect.effective_finger_engine(): a .blend saved with the Full
+    # edition can still hold AUTO here, and Lite will run GEOMETRIC regardless —
+    # so the panel must show the sliders that actually apply.
+    _fing_eng = 'GEOMETRIC' if LITE_BUILD else getattr(
+        scene, "finger_detection_engine", 'AUTO')
     if _fing_eng == 'GEOMETRIC':
         # Geometric-only options: the wrist auto-snap moves the HAND marker
         # onto the mesh wrist (the geodesic walk starts there); Auto/template
@@ -5508,6 +5480,15 @@ class AUTORIG_OT_CheckMarkers(bpy.types.Operator):
                         f"{n1} and {n2} are {dist * 1000:.1f} mm apart — move them further apart."
                     ))
 
+        # ── 3. Markers outside the body mesh ───────────────────────────────
+        if body_col:
+            status = _compute_marker_status(context)
+            for name in status.get("outside") or []:
+                issues.append((
+                    'ERROR',
+                    f"MARKER_{name} is outside the mesh — re-run Auto Detect or drag it back onto the surface."
+                ))
+
         # ── Report ────────────────────────────────────────────────────────
         if not issues:
             self.report({'INFO'}, "All markers OK — no issues found.")
@@ -5709,10 +5690,18 @@ class AUTORIG_Prefs(bpy.types.AddonPreferences):
         # the user to install/uninstall; this is a status line only.
         layout.separator()
         ai_box = layout.box()
-        ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
-        if _ai.is_available():
+        if LITE_BUILD:
+            # Lite ships no models at all, so the deps status would be both
+            # irrelevant and alarming ("not available on this platform" reads
+            # as a broken install rather than the edition working as sold).
+            ai_box.label(text="Easy Rigify Lite", icon='SHADERFX')
+            ai_box.label(text="Geometric detection only — this edition")
+            ai_box.label(text="ships without the EasyDetect AI models.")
+        elif _ai.is_available():
+            ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
             ai_box.label(text="onnxruntime + Pillow: Ready", icon='CHECKMARK')
         else:
+            ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
             ai_box.label(text="onnxruntime + Pillow: not available on this",
                          icon='ERROR')
             ai_box.label(text="platform/Blender version — using the")

@@ -13,7 +13,7 @@ import numpy as np
 from mathutils import Vector, Matrix
 
 from .constants import ALL_MARKERS, BODY_SIZE, FINGER_SIZE, FACE_SIZE, CORE_FACE_LANDMARKS, FULL_FACE_LANDMARKS
-from .constants import dbg
+from .constants import dbg, LITE_BUILD
 from .utils import get_or_create_collection, make_empty, _mesh_bbox_world
 
 
@@ -77,6 +77,22 @@ def is_body_onnx_available():
         except ImportError:
             _body_onnx_avail_cache = False
     return _body_onnx_avail_cache
+
+
+def effective_finger_engine(context):
+    """The engine Detect Fingers will actually run.
+
+    Lite ships no neural models, so a stored AUTO/NEURAL/TEMPLATE choice has
+    nothing to run — a .blend saved with the Full edition keeps its scene
+    property when opened in Lite, so the stored value is corrected here rather
+    than only in the UI (which a keymap or script can bypass entirely).
+    """
+    eng = getattr(context.scene, 'finger_detection_engine', 'AUTO')
+    if LITE_BUILD and eng != 'GEOMETRIC':
+        dbg(f"[fingers] Lite build — engine {eng} unavailable (no models), "
+            f"using GEOMETRIC")
+        return 'GEOMETRIC'
+    return eng
 
 
 # ── Orthographic rendering ────────────────────────────────────────────────────
@@ -2779,7 +2795,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
         # from the wrist marker, so it needs the marker ON the wrist; the
         # Auto/template pipeline measures from the recorded estimate instead
         # (below) and must not override the user's marker placement.
-        _eng  = getattr(context.scene, 'finger_detection_engine', 'AUTO')
+        _eng  = effective_finger_engine(context)
         _auto = (_eng == 'GEOMETRIC'
                  and getattr(context.scene, 'finger_wrist_autosnap', True))
         if not _auto:
@@ -2928,7 +2944,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
         except Exception:
             pass
         dtype_map  = {name: dtype for name, dtype, _ in ALL_MARKERS}
-        engine     = getattr(context.scene, 'finger_detection_engine', 'NEURAL')
+        engine     = effective_finger_engine(context)
         if engine == 'AUTO':
             # AUTO = the template-constrained pipeline: neural evidence (geo
             # fallback when thin), validation-gated template rebuild, full

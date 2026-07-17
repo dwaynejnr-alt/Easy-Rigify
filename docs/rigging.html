@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rigging - Easy Rigify</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">Easy Rigify Docs</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="getting-started.html">Getting Started</a></li>
+                <li><a href="markers.html">Markers</a></li>
+                <li><a href="rigging.html" class="active">Rigging</a></li>
+                <li><a href="skinning.html">Skinning</a></li>
+                <li><a href="features.html">Features</a></li>
+                <li><a href="troubleshooting.html">FAQ</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container main-content">
+        <main>
+            <h1>Rigging Workflow</h1>
+            <p class="page-intro">Once your markers are placed, the rigging process happens in two steps: align the Rigify metarig to your markers, then generate the final control rig.</p>
+
+            <section id="overview">
+                <h2>Overview</h2>
+                <p>The Rigify metarig is an armature that defines the structure of your rig. Easy Rigify automatically positions every bone in this metarig to match your character, then Rigify generates the final control rig with IK, FK, and other features.</p>
+
+                <div class="info-box">
+                    <strong>ℹ️ What's a metarig?</strong> It's a special armature that Rigify reads to generate your control rig. You don't animate with it—Rigify creates the actual control rig from it.
+                </div>
+            </section>
+
+            <section id="align">
+                <h2>Align Rig to Markers</h2>
+
+                <h3>The Process</h3>
+                <ol>
+                    <li>Make sure all markers are placed and validated</li>
+                    <li>Go to the <strong>Rig</strong> tab in Easy Rigify</li>
+                    <li>Click <strong>"Align Rig to Markers"</strong></li>
+                    <li>Easy Rigify will:
+                        <ul>
+                            <li>Create a Rigify metarig if one doesn't exist</li>
+                            <li>Position every bone to match your markers</li>
+                            <li>Calculate correct bone rolls from your mesh surface</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>Bone Rolls</h3>
+                <p>Bone rolls define the rotation direction of each bone (which way is "up" along the bone). Easy Rigify calculates these automatically based on your mesh surface, so deformation is smooth.</p>
+            </section>
+
+            <section id="generate">
+                <h2>Generate Rig</h2>
+
+                <h3>Creating Your Control Rig</h3>
+                <ol>
+                    <li>After alignment, click <strong>"Generate Rig"</strong></li>
+                    <li>Rigify reads the metarig and generates:
+                        <ul>
+                            <li>Control bones (for animation)</li>
+                            <li>Deform bones (connected to mesh weights)</li>
+                            <li>Mechanism bones (IK poles, hand IK, etc.)</li>
+                        </ul>
+                    </li>
+                    <li>A new armature called "rig" is created</li>
+                </ol>
+
+                <div class="success-box">
+                    <strong>✅ Your rig is ready!</strong> You can now bind your mesh and start animating.
+                </div>
+            </section>
+
+            <section id="regenerate">
+                <h2>Regenerate Without Losing Work</h2>
+
+                <h3>Saving & Restoring Custom Changes</h3>
+                <p>Need to tweak the metarig and regenerate? Easy Rigify can backup and restore your custom changes.</p>
+
+                <h3>Backup Before Changes</h3>
+                <ol>
+                    <li>Click <strong>"Backup Custom Rig Changes"</strong></li>
+                    <li>This saves any custom control shapes, bone properties, or modifications</li>
+                </ol>
+
+                <h3>Tweak & Regenerate</h3>
+                <ol>
+                    <li>Make adjustments to the metarig in Edit Mode</li>
+                    <li>Click <strong>"Generate Rig"</strong> again</li>
+                </ol>
+
+                <h3>Restore Your Changes</h3>
+                <ol>
+                    <li>Click <strong>"Restore Custom Rig Changes"</strong></li>
+                    <li>Your custom shapes and properties are reapplied to the new rig</li>
+                </ol>
+
+                <div class="info-box">
+                    <strong>💡 Tip:</strong> This workflow is great for iterating on rig geometry or control shapes without starting over.
+                </div>
+            </section>
+
+            <section id="troubleshoot">
+                <h2>Troubleshooting Alignment</h2>
+
+                <h3>Misaligned Bones</h3>
+                <p><strong>Cause:</strong> Markers are placed incorrectly or unapplied scale/rotation on your mesh.</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Apply all transforms on your mesh: <code>Object → Apply → All Transforms</code></li>
+                    <li>Re-place markers and validate with "Check All Markers"</li>
+                    <li>Run "Align Rig to Markers" again</li>
+                </ul>
+
+                <h3>Bad Bone Rolls</h3>
+                <p><strong>Cause:</strong> Deformation looks twisted or strange.</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Check that your mesh normal directions are correct (mesh isn't inverted)</li>
+                    <li>Make sure markers are placed symmetrically on left and right sides</li>
+                    <li>Re-align and regenerate</li>
+                </ul>
+
+                <h3>Rig Doesn't Appear</h3>
+                <p><strong>Cause:</strong> Metarig wasn't created or Rigify failed to generate.</p>
+                <p><strong>Solution:</strong></p>
+                <ul>
+                    <li>Make sure Rigify is enabled in Blender preferences</li>
+                    <li>Check the system console (Help → Toggle System Console) for error messages</li>
+                    <li>Try deleting the metarig and running "Align Rig to Markers" fresh</li>
+                </ul>
+            </section>
+
+            <section id="bone-rolls">
+                <h2>Understanding Bone Rolls (Advanced)</h2>
+                <p>Bone rolls define the rotation axis of each bone. In Blender, you'll see this as the angle of the bone in pose mode.</p>
+
+                <h3>Why Bone Rolls Matter</h3>
+                <ul>
+                    <li>Affect deformation direction in pose mode</li>
+                    <li>Influence IK solver behavior (elbow point)</li>
+                    <li>Determine how weights deform around joints</li>
+                </ul>
+
+                <h3>Easy Rigify's Automatic Calculation</h3>
+                <p>When you align the rig, Easy Rigify calculates bone rolls by:</p>
+                <ol>
+                    <li>Reading your mesh surface normals</li>
+                    <li>Determining the local "forward" direction for each bone</li>
+                    <li>Setting the roll so deformation follows your mesh shape</li>
+                </ol>
+
+                <div class="info-box">
+                    <strong>💡 Manual Adjustment:</strong> If a bone's roll is off, you can adjust it manually in Edit Mode by rotating the bone around its length axis.
+                </div>
+            </section>
+
+            <section id="next">
+                <h2>Next Steps</h2>
+                <ul>
+                    <li><a href="skinning.html">Bind and skin your mesh</a></li>
+                    <li><a href="features.html#helpers">Use viewport helpers to check alignment</a></li>
+                    <li><a href="troubleshooting.html">See common rigging issues</a></li>
+                </ul>
+            </section>
+
+        </main>
+
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h4>On This Page</h4>
+                <ul>
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#align">Align to Markers</a></li>
+                    <li><a href="#generate">Generate Rig</a></li>
+                    <li><a href="#regenerate">Regenerate</a></li>
+                    <li><a href="#troubleshoot">Troubleshooting</a></li>
+                    <li><a href="#bone-rolls">Bone Rolls</a></li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
+        </div>
+    </footer>
+</body>
+</html>

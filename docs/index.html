@@ -3,162 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy Rigify - Blender Auto-Rigging Addon</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Easy Rigify Documentation</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
-            <div class="logo">Easy Rigify</div>
+            <div class="logo">Easy Rigify Docs</div>
             <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#install">Install</a></li>
-                <li><a href="#docs">Docs</a></li>
-                <li><a href="#contact">Contact</a></li>
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="getting-started.html">Getting Started</a></li>
+                <li><a href="markers.html">Markers</a></li>
+                <li><a href="rigging.html">Rigging</a></li>
+                <li><a href="skinning.html">Skinning</a></li>
+                <li><a href="features.html">Features</a></li>
+                <li><a href="troubleshooting.html">FAQ</a></li>
             </ul>
         </div>
     </nav>
 
-    <section class="hero">
-        <div class="container">
-            <h1>Easy Rigify</h1>
-            <p class="tagline">Place markers → Auto-align a Rigify rig → Smart skinning</p>
-            <p class="description">Turn the tedious part of character rigging into a guided, click-driven workflow. Get production-ready Rigify rigs in minutes, not hours.</p>
-            <div class="hero-buttons">
-                <a href="#install" class="btn btn-primary">Install Now</a>
-                <a href="https://www.notion.so/Easy-Rigify-Documentation-37019f42b1f880c3b748f0849675e3ea" target="_blank" class="btn btn-secondary">Full Documentation</a>
-            </div>
-        </div>
-    </section>
+    <div class="container main-content">
+        <main>
+            <section class="hero-docs">
+                <h1>Easy Rigify Documentation</h1>
+                <p class="subtitle">Complete guide to auto-rigging characters in Blender</p>
+            </section>
 
-    <section class="editions">
-        <div class="container">
-            <h2>Two Editions</h2>
-            <div class="editions-grid">
-                <div class="edition-card">
-                    <h3>Easy Rigify</h3>
-                    <p class="edition-badge full">Full Edition</p>
-                    <ul>
-                        <li>AI + geometric body detection</li>
-                        <li>AI finger placement</li>
-                        <li>AI facial markers</li>
-                        <li>Bundled runtime (no setup)</li>
-                    </ul>
-                    <p class="edition-note">Works on Blender 4.2+</p>
-                </div>
-                <div class="edition-card">
-                    <h3>Easy Rigify Lite</h3>
-                    <p class="edition-badge lite">Lite Edition</p>
-                    <ul>
-                        <li>Geometric detection only</li>
-                        <li>No AI (smaller, faster)</li>
-                        <li>~1 MB download</li>
-                        <li>Compatible with Full Edition</li>
-                    </ul>
-                    <p class="edition-note">Scene files work in both editions</p>
-                </div>
-            </div>
-        </div>
-    </section>
+            <section class="docs-intro">
+                <h2>Welcome</h2>
+                <p>Easy Rigify automates the tedious process of aligning a Rigify metarig to your character model. Instead of hand-editing dozens of bones in edit mode, you place visible markers on your character, and the addon snaps a production-ready rig into place.</p>
 
-    <section id="features" class="features">
-        <div class="container">
-            <h2>Key Features</h2>
-            <div class="features-grid">
-                <div class="feature">
-                    <h3>🎯 One-Click Detection</h3>
-                    <p>Auto-place body markers for spine, arms, legs, and feet. AI detection handles tricky proportions in the full edition.</p>
-                </div>
-                <div class="feature">
-                    <h3>✋ Smart Fingers</h3>
-                    <p>Place every hand and finger joint in one click, or use the intuitive two-click-per-finger workflow (tip, then knuckle).</p>
-                </div>
-                <div class="feature">
-                    <h3>👁️ Facial Markers</h3>
-                    <p>Guided detection for brows, eyes, lids, lips, nose, cheeks, chin, jaw, and forehead. Full edition adds one-click detection.</p>
-                </div>
-                <div class="feature">
-                    <h3>🪞 Live Symmetry</h3>
-                    <p>Mirror markers left ↔ right. Turn on Live Symmetry to edit one side and mirror changes in real time.</p>
-                </div>
-                <div class="feature">
-                    <h3>⚙️ Auto-Align & Generate</h3>
-                    <p>Snap every metarig bone to your markers and generate the final Rigify rig, with correct bone rolls included.</p>
-                </div>
-                <div class="feature">
-                    <h3>🎨 Skinning Suite</h3>
-                    <p>Automatic binding, per-region weight tightening, joint-bleed repair, smoothing, and a full weight-paint toolkit.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="install" class="install">
-        <div class="container">
-            <h2>Installation</h2>
-            <div class="install-steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>Download</h3>
-                        <p>Get the latest version from <a href="https://github.com/dwaynejnr-alt/rig-addon-pro/releases" target="_blank">GitHub Releases</a></p>
+                <div class="quick-links">
+                    <div class="link-card">
+                        <h3>📦 Installation</h3>
+                        <p>Get up and running in 5 minutes</p>
+                        <a href="getting-started.html#install">Install Now →</a>
+                    </div>
+                    <div class="link-card">
+                        <h3>⚡ Quick Start</h3>
+                        <p>Your first rig in 15 minutes</p>
+                        <a href="getting-started.html#quickstart">Quick Start →</a>
+                    </div>
+                    <div class="link-card">
+                        <h3>📖 Full Workflow</h3>
+                        <p>Step-by-step process breakdown</p>
+                        <a href="markers.html">Learn Workflow →</a>
                     </div>
                 </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>Install in Blender</h3>
-                        <p>Edit → Preferences → Get Extensions → Install from Disk... → Pick the zip file</p>
+            </section>
+
+            <section class="docs-sections">
+                <h2>Documentation Sections</h2>
+
+                <div class="section-grid">
+                    <div class="section-card">
+                        <h3>Getting Started</h3>
+                        <ul>
+                            <li><a href="getting-started.html#install">Installation</a></li>
+                            <li><a href="getting-started.html#quickstart">Quick Start</a></li>
+                            <li><a href="getting-started.html#requirements">Requirements</a></li>
+                            <li><a href="getting-started.html#editions">Editions</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="section-card">
+                        <h3>Workflow</h3>
+                        <ul>
+                            <li><a href="markers.html">Placing Markers</a></li>
+                            <li><a href="markers.html#body">Body Detection</a></li>
+                            <li><a href="markers.html#fingers">Finger Detection</a></li>
+                            <li><a href="markers.html#face">Face Detection</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="section-card">
+                        <h3>Rigging</h3>
+                        <ul>
+                            <li><a href="rigging.html">Align & Generate</a></li>
+                            <li><a href="rigging.html#troubleshoot">Troubleshooting Alignment</a></li>
+                            <li><a href="rigging.html#regenerate">Regenerate Without Loss</a></li>
+                            <li><a href="rigging.html#bone-rolls">Understanding Bone Rolls</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="section-card">
+                        <h3>Skinning</h3>
+                        <ul>
+                            <li><a href="skinning.html#binding">Automatic Binding</a></li>
+                            <li><a href="skinning.html#weights">Weight Cleanup</a></li>
+                            <li><a href="skinning.html#deformation">Fixing Deformation</a></li>
+                            <li><a href="skinning.html#tools">Weight Tools</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="section-card">
+                        <h3>Features</h3>
+                        <ul>
+                            <li><a href="features.html#detection">AI Detection</a></li>
+                            <li><a href="features.html#symmetry">Live Symmetry</a></li>
+                            <li><a href="features.html#helpers">Viewport Helpers</a></li>
+                            <li><a href="features.html#tools">Utility Tools</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="section-card">
+                        <h3>Support</h3>
+                        <ul>
+                            <li><a href="troubleshooting.html">FAQ</a></li>
+                            <li><a href="troubleshooting.html#common">Common Issues</a></li>
+                            <li><a href="troubleshooting.html#tips">Pro Tips</a></li>
+                            <li><a href="troubleshooting.html#contact">Contact</a></li>
+                        </ul>
                     </div>
                 </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>Enable & Done</h3>
-                        <p>Check the box next to "Easy Rigify" to enable. AI runtime loads automatically (full edition).</p>
+            </section>
+
+            <section class="key-features">
+                <h2>Key Features at a Glance</h2>
+                <div class="features-list">
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <div>
+                            <h4>One-Click Detection</h4>
+                            <p>Auto-place body markers or use AI for complex proportions</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✋</span>
+                        <div>
+                            <h4>Smart Fingers</h4>
+                            <p>Place all hand/finger joints in one click or use guided 2-click workflow</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">👁️</span>
+                        <div>
+                            <h4>Facial Markers</h4>
+                            <p>Automatic face detection or guided section-by-section placement</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🪞</span>
+                        <div>
+                            <h4>Live Symmetry</h4>
+                            <p>Edit one side, mirror changes in real-time across the symmetry plane</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚙️</span>
+                        <div>
+                            <h4>Auto-Align & Generate</h4>
+                            <p>Snap metarig bones to markers and generate production rig</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎨</span>
+                        <div>
+                            <h4>Skinning Suite</h4>
+                            <p>Auto-binding, weight cleanup, joint-bleed repair, and more</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="install-note">
-                <strong>Requirements:</strong> Blender 4.2+, Rigify addon enabled. No internet or account needed.
-            </div>
-        </div>
-    </section>
+            </section>
 
-    <section id="docs" class="docs">
-        <div class="container">
-            <h2>Documentation & Resources</h2>
-            <div class="docs-grid">
-                <div class="doc-card">
-                    <h3>📖 Full Guide</h3>
-                    <p>Step-by-step walkthrough and troubleshooting</p>
-                    <a href="https://www.notion.so/Easy-Rigify-Documentation-37019f42b1f880c3b748f0849675e3ea" target="_blank" class="doc-link">Read on Notion →</a>
+            <section class="versions">
+                <h2>Choose Your Edition</h2>
+                <div class="version-grid">
+                    <div class="version-card full">
+                        <h3>Easy Rigify</h3>
+                        <p class="badge">Full Edition</p>
+                        <ul>
+                            <li>✅ AI body detection</li>
+                            <li>✅ AI finger placement</li>
+                            <li>✅ AI facial markers</li>
+                            <li>✅ Geometric fallback</li>
+                            <li>✅ Bundled runtime</li>
+                        </ul>
+                        <p class="note">Recommended for most workflows</p>
+                    </div>
+                    <div class="version-card lite">
+                        <h3>Easy Rigify Lite</h3>
+                        <p class="badge">Lite Edition</p>
+                        <ul>
+                            <li>✅ Geometric detection</li>
+                            <li>✅ Manual placement tools</li>
+                            <li>✅ Full rigging pipeline</li>
+                            <li>✅ ~1 MB download</li>
+                            <li>❌ No AI (faster to load)</li>
+                        </ul>
+                        <p class="note">Lightweight alternative</p>
+                    </div>
                 </div>
-                <div class="doc-card">
-                    <h3>⚡ Quick Start</h3>
-                    <p>Get up and running in 5 minutes</p>
-                    <a href="https://www.notion.so/Easy-Rigify-Documentation-37019f42b1f880c3b748f0849675e3ea" target="_blank" class="doc-link">Quick Start →</a>
-                </div>
-                <div class="doc-card">
-                    <h3>🐛 Troubleshooting</h3>
-                    <p>Common issues and solutions</p>
-                    <a href="https://www.notion.so/Easy-Rigify-Documentation-37019f42b1f880c3b748f0849675e3ea" target="_blank" class="doc-link">Troubleshooting →</a>
-                </div>
-            </div>
-        </div>
-    </section>
+            </section>
 
-    <section id="contact" class="contact">
-        <div class="container">
-            <h2>Get In Touch</h2>
-            <p>Have questions or feedback? Reach out:</p>
-            <a href="mailto:dwayne.jnr@gmail.com" class="btn btn-primary">Email</a>
-        </div>
-    </section>
+        </main>
+
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h4>Quick Navigation</h4>
+                <ul>
+                    <li><a href="getting-started.html">Getting Started</a></li>
+                    <li><a href="markers.html">Placing Markers</a></li>
+                    <li><a href="rigging.html">Rigging Workflow</a></li>
+                    <li><a href="skinning.html">Skinning</a></li>
+                    <li><a href="features.html">All Features</a></li>
+                    <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="#" target="_blank">GitHub</a></li>
+                    <li><a href="#" target="_blank">Issue Tracker</a></li>
+                    <li><a href="mailto:dwayne.jnr@gmail.com">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="sidebar-section">
+                <h4>Requirements</h4>
+                <ul>
+                    <li>Blender 4.2+</li>
+                    <li>Rigify addon</li>
+                    <li>No internet needed</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 Easy Rigify. Built for Blender character artists.</p>
+            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
         </div>
     </footer>
 </body>

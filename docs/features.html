@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - Easy Rigify</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">Easy Rigify Docs</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="getting-started.html">Getting Started</a></li>
+                <li><a href="markers.html">Markers</a></li>
+                <li><a href="rigging.html">Rigging</a></li>
+                <li><a href="skinning.html">Skinning</a></li>
+                <li><a href="features.html" class="active">Features</a></li>
+                <li><a href="troubleshooting.html">FAQ</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container main-content">
+        <main>
+            <h1>Features & Tools</h1>
+            <p class="page-intro">Easy Rigify includes a comprehensive set of tools beyond the core workflow. This page covers everything from viewport helpers to advanced utilities.</p>
+
+            <section id="detection">
+                <h2>Detection Engines</h2>
+
+                <h3>Geometric Detection</h3>
+                <p>Works on any humanoid mesh by reading its geometry.</p>
+                <ul>
+                    <li>No training or AI needed</li>
+                    <li>Deterministic (same input = same output)</li>
+                    <li>Works on stylized and realistic characters</li>
+                    <li>Available in both Full and Lite editions</li>
+                </ul>
+
+                <h3>AI Detection (Full Edition)</h3>
+                <p>Uses trained neural networks for more sophisticated placement.</p>
+                <ul>
+                    <li>Better on unusual proportions</li>
+                    <li>Handles extreme poses (curled fingers, tucked thumb)</li>
+                    <li>Bundled runtime, no setup required</li>
+                    <li>Falls back to geometric if AI fails</li>
+                </ul>
+
+                <div class="info-box">
+                    <strong>💡 Which to use?</strong> Start with geometric (faster). If results aren't perfect, try AI detection for better accuracy on tricky characters.
+                </div>
+            </section>
+
+            <section id="symmetry">
+                <h2>Live Symmetry</h2>
+
+                <h3>What It Does</h3>
+                <p>Edit one side of your character and see changes mirror in real time across the symmetry plane.</p>
+
+                <h3>Enable Live Symmetry</h3>
+                <ol>
+                    <li>Go to the Markers tab</li>
+                    <li>Look for the "Live Symmetry" toggle in the Mirror section</li>
+                    <li>Check the box to enable</li>
+                    <li>Now when you move a marker, its mirror moves too</li>
+                </ol>
+
+                <h3>Use Cases</h3>
+                <ul>
+                    <li>Fine-tuning bilateral symmetry</li>
+                    <li>Fixing both sides of the body at once</li>
+                    <li>Creating truly symmetrical characters</li>
+                </ul>
+
+                <div class="info-box">
+                    <strong>⚠️ Note:</strong> Disable Live Symmetry for asymmetrical characters (scars, deformities, etc.).
+                </div>
+            </section>
+
+            <section id="helpers">
+                <h2>Viewport Helpers</h2>
+
+                <h3>Show / Hide Markers</h3>
+                <p>Toggle all markers, connecting lines, and labels on/off.</p>
+                <ul>
+                    <li>Useful for seeing your mesh clearly during setup</li>
+                    <li>Toggles markers and visual guides together</li>
+                </ul>
+
+                <h3>X-Ray Toggle</h3>
+                <p>See through your mesh to view bones and markers inside.</p>
+                <ul>
+                    <li>Useful when markers are inside the character</li>
+                    <li>Helps with alignment checking</li>
+                </ul>
+
+                <h3>Mesh Selection Toggle</h3>
+                <p>Quickly switch between mesh and armature selection.</p>
+                <ul>
+                    <li>Grab a marker without deselecting the mesh</li>
+                    <li>Switch between editing mesh and bones</li>
+                </ul>
+
+                <h3>Marker Resize</h3>
+                <p>Adjust the visual size of all markers.</p>
+                <ul>
+                    <li>Make them bigger if they're hard to see</li>
+                    <li>Make them smaller to reduce clutter</li>
+                </ul>
+
+                <h3>On-Screen Hints</h3>
+                <p>Contextual help text appears in the viewport when you select a marker.</p>
+                <ul>
+                    <li>Shows exactly where each marker should go</li>
+                    <li>Provides guidance for placement</li>
+                </ul>
+            </section>
+
+            <section id="tools">
+                <h2>Utility Tools</h2>
+
+                <h3>Check All Markers</h3>
+                <p>Validates your marker setup before rigging.</p>
+                <p><strong>Checks for:</strong></p>
+                <ul>
+                    <li>Missing required markers</li>
+                    <li>Overlapping markers</li>
+                    <li>Markers outside the mesh</li>
+                </ul>
+
+                <h3>Fan Bones</h3>
+                <p>Generate helper bones for smoother deformation at joints.</p>
+                <ul>
+                    <li>Creates extra deform bones at shoulders, elbows, etc.</li>
+                    <li>Reduces creasing and pinching</li>
+                    <li>Generated automatically during rig creation (optional)</li>
+                </ul>
+
+                <h3>Straighten Fingers</h3>
+                <p>Cleans up finger placement to remove side-to-side wander.</p>
+                <ul>
+                    <li>Aligns fingers to a straight line</li>
+                    <li>Useful if manual placement is crooked</li>
+                </ul>
+
+                <h3>Mirror Weights</h3>
+                <p>Copy skin weights from left side to right (or vice versa).</p>
+                <ul>
+                    <li>Useful after editing one side</li>
+                    <li>Maintains perfect symmetry</li>
+                </ul>
+
+                <h3>Analyze Joint Bleed</h3>
+                <p>Finds areas where nearby geometry deforms incorrectly.</p>
+                <ul>
+                    <li>Visualizes problem areas in color</li>
+                    <li>Helps you identify weight issues</li>
+                </ul>
+
+                <h3>Repair Joint Bleed</h3>
+                <p>Automatically fixes joint bleed areas.</p>
+                <ul>
+                    <li>Restricts vertex influence to nearest joints</li>
+                    <li>Reduces unwanted deformation</li>
+                </ul>
+
+                <h3>Smooth Weights</h3>
+                <p>Smooths weight transitions across the mesh.</p>
+                <ul>
+                    <li>Removes hard edges in deformation</li>
+                    <li>Creates more organic bending</li>
+                </ul>
+
+                <h3>Prune Weights</h3>
+                <p>Removes tiny weight values that don't contribute.</p>
+                <ul>
+                    <li>Cleans up the weight data</li>
+                    <li>Can improve deformation efficiency</li>
+                </ul>
+            </section>
+
+            <section id="advanced">
+                <h2>Advanced Features</h2>
+
+                <h3>Backup & Restore Custom Changes</h3>
+                <p>Save and restore custom rig modifications when regenerating.</p>
+                <ul>
+                    <li>Backup before tweaking the metarig</li>
+                    <li>Regenerate the rig</li>
+                    <li>Restore to reapply custom changes</li>
+                </ul>
+
+                <h3>Bone Roll Calculation</h3>
+                <p>Automatic bone roll calculation from mesh geometry.</p>
+                <ul>
+                    <li>Ensures correct deformation direction</li>
+                    <li>Based on surface normals</li>
+                    <li>Can be manually adjusted if needed</li>
+                </ul>
+
+                <h3>Per-Finger Picker</h3>
+                <p>Redo individual fingers without redoing the whole hand.</p>
+                <ul>
+                    <li>Select a finger and re-detect it</li>
+                    <li>Great for fixing one problem digit</li>
+                </ul>
+
+                <h3>Section-by-Section Face Detection</h3>
+                <p>Detect facial regions independently.</p>
+                <ul>
+                    <li>Eyes, brows, lips, nose detected separately</li>
+                    <li>Gives you fine-grained control</li>
+                    <li>Use separate mesh objects for better results</li>
+                </ul>
+            </section>
+
+            <section id="keyboard">
+                <h2>Keyboard Shortcuts</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Shortcut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Move marker</td>
+                            <td><code>G</code> (then move mouse)</td>
+                        </tr>
+                        <tr>
+                            <td>Constrain to axis</td>
+                            <td><code>X</code>, <code>Y</code>, <code>Z</code></td>
+                        </tr>
+                        <tr>
+                            <td>Confirm move</td>
+                            <td><code>LMB</code> or <code>Return</code></td>
+                        </tr>
+                        <tr>
+                            <td>Cancel move</td>
+                            <td><code>Esc</code> or <code>RMB</code></td>
+                        </tr>
+                        <tr>
+                            <td>Enter Pose Mode</td>
+                            <td><code>Tab</code> (with rig selected)</td>
+                        </tr>
+                        <tr>
+                            <td>Move bone (Pose Mode)</td>
+                            <td><code>G</code></td>
+                        </tr>
+                        <tr>
+                            <td>Rotate bone</td>
+                            <td><code>R</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="tips">
+                <h2>Pro Tips</h2>
+                <ul>
+                    <li><strong>Start with Geometric:</strong> It's usually accurate enough and faster</li>
+                    <li><strong>Use Live Symmetry:</strong> Saves time on bilateral adjustments</li>
+                    <li><strong>Validate Early:</strong> Run "Check All Markers" before alignment</li>
+                    <li><strong>Test Deformation:</strong> Pose the rig immediately after skinning to catch issues</li>
+                    <li><strong>Iterative Refinement:</strong> Paint weights in small batches and test frequently</li>
+                    <li><strong>Use Presets:</strong> "Default" weight tightening works for most characters</li>
+                    <li><strong>Keep Originals:</strong> Save a backup .blend before major modifications</li>
+                </ul>
+            </section>
+
+        </main>
+
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h4>On This Page</h4>
+                <ul>
+                    <li><a href="#detection">Detection</a></li>
+                    <li><a href="#symmetry">Live Symmetry</a></li>
+                    <li><a href="#helpers">Viewport Helpers</a></li>
+                    <li><a href="#tools">Utility Tools</a></li>
+                    <li><a href="#advanced">Advanced</a></li>
+                    <li><a href="#keyboard">Shortcuts</a></li>
+                    <li><a href="#tips">Pro Tips</a></li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
+        </div>
+    </footer>
+</body>
+</html>

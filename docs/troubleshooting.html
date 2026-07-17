@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting & FAQ - Easy Rigify</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">Easy Rigify Docs</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="getting-started.html">Getting Started</a></li>
+                <li><a href="markers.html">Markers</a></li>
+                <li><a href="rigging.html">Rigging</a></li>
+                <li><a href="skinning.html">Skinning</a></li>
+                <li><a href="features.html">Features</a></li>
+                <li><a href="troubleshooting.html" class="active">FAQ</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container main-content">
+        <main>
+            <h1>Troubleshooting & FAQ</h1>
+            <p class="page-intro">Common issues and how to solve them. If you don't find your answer here, check the GitHub issues page.</p>
+
+            <section id="common">
+                <h2>Common Issues</h2>
+
+                <div class="faq-item">
+                    <h3>❌ Addon isn't showing in Blender</h3>
+                    <p><strong>Problem:</strong> You installed the addon but don't see the Easy Rigify tab.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol>
+                        <li>Go to Edit → Preferences → Get Extensions</li>
+                        <li>Search for "Easy Rigify"</li>
+                        <li>Make sure the checkbox is ticked (enabled)</li>
+                        <li>If it's grayed out, click it to enable</li>
+                        <li>Close and reopen Preferences</li>
+                        <li>The tab should now appear in the 3D Viewport sidebar (press N)</li>
+                    </ol>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ "Rigify addon not found"</h3>
+                    <p><strong>Problem:</strong> Easy Rigify says Rigify is disabled.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol>
+                        <li>Go to Edit → Preferences → Add-ons (not Get Extensions)</li>
+                        <li>Search for "Rigify"</li>
+                        <li>Check the box next to it to enable</li>
+                        <li>Close Preferences</li>
+                        <li>Try again</li>
+                    </ol>
+                    <div class="info-box">
+                        <strong>ℹ️ Note:</strong> Rigify is built into Blender but needs to be enabled. Easy Rigify won't work without it.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ Markers won't place on my mesh</h3>
+                    <p><strong>Problem:</strong> Clicking "Auto Detect" doesn't place markers.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li>Make sure you've selected your character mesh</li>
+                        <li>Check that "Body Mesh" is set in the Markers panel</li>
+                        <li>Apply all transforms: <code>Object → Apply → All Transforms</code></li>
+                        <li>Make sure your mesh isn't too small or too large (try scaling to ~1-2 Blender units tall)</li>
+                        <li>Check that your mesh is a single connected object (not multiple objects)</li>
+                    </ul>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ Alignment is completely off</h3>
+                    <p><strong>Problem:</strong> Bones don't match markers at all.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol>
+                        <li>Delete the metarig (it's called "metarig")</li>
+                        <li>Apply all transforms on your mesh</li>
+                        <li>Re-detect and place markers</li>
+                        <li>Run "Check All Markers" to validate</li>
+                        <li>Run "Align Rig to Markers" again</li>
+                    </ol>
+                    <p><strong>Why this happens:</strong> Unapplied scale/rotation is the #1 cause of bad alignment.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ AI detection doesn't work (Full Edition)</h3>
+                    <p><strong>Problem:</strong> "EasyDetect" buttons don't work or show errors.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li>The AI runtime might not have loaded. Check the system console: Help → Toggle System Console</li>
+                        <li>Look for error messages mentioning "onnxruntime" or "AI"</li>
+                        <li>Try switching to geometric detection as a workaround</li>
+                        <li>AI may not work on exotic platforms (very old GPU, ARM processor, etc.)</li>
+                    </ul>
+                    <div class="info-box">
+                        <strong>💡 Fallback:</strong> If AI doesn't work, geometric detection still works perfectly. You just won't get the AI advantage.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ Mesh deformation looks bad</h3>
+                    <p><strong>Problem:</strong> The rig moves but the mesh collapses, pinches, or twists weirdly.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol>
+                        <li>Make sure you applied "Tighten Weights" in the Skin tab</li>
+                        <li>Try a different tightening preset (Gentle, Default, Aggressive)</li>
+                        <li>Use "Analyze Joint Bleed" and "Repair Joint Bleed" to fix problem areas</li>
+                        <li>Manually paint weights on problem joints</li>
+                        <li>Use "Smooth Weights" to blend transitions</li>
+                    </ol>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ Fingers look wrong or twisted</h3>
+                    <p><strong>Problem:</strong> Finger markers are misplaced or rotated incorrectly.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li>Use "Straighten Fingers" to auto-correct wander</li>
+                        <li>Manually re-detect just that finger using the per-finger picker</li>
+                        <li>Make sure your hand is in a clear, neutral pose (not curled or twisted)</li>
+                        <li>For the full edition, try "EasyDetect Fingers" for better accuracy</li>
+                    </ul>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ Shoulder or elbow keeps pinching</h3>
+                    <p><strong>Problem:</strong> Deformation looks creased at arm joints.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol>
+                        <li>Use "Tighten Weights" → select "Shoulders" or "Forearms"</li>
+                        <li>Try "Aggressive" preset instead of Default</li>
+                        <li>Manually paint weights to smooth the transition between bones</li>
+                        <li>Use the brush to blend weights across the joint area</li>
+                    </ol>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ "Check All Markers" shows errors</h3>
+                    <p><strong>Problem:</strong> Missing, overlapping, or outside-mesh markers.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li><strong>Missing:</strong> Place the marker in the position shown by the on-screen hint</li>
+                        <li><strong>Overlapping:</strong> Markers are too close together; move them apart</li>
+                        <li><strong>Outside mesh:</strong> Marker is floating in empty space; grab (G) and move it onto the mesh</li>
+                    </ul>
+                </div>
+
+                <div class="faq-item">
+                    <h3>❌ Blender crashes when I click a button</h3>
+                    <p><strong>Problem:</strong> Blender freezes or crashes during detection or rigging.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ul>
+                        <li>Save your work first!</li>
+                        <li>Make sure your mesh doesn't have millions of vertices (decimation might help)</li>
+                        <li>Try closing and reopening Blender</li>
+                        <li>Update to the latest Blender version (4.2 or newer)</li>
+                        <li>Check the GitHub issues page for your specific Blender version</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="tips">
+                <h2>Best Practices to Avoid Issues</h2>
+
+                <h3>Pre-Rigging Checklist</h3>
+                <ul>
+                    <li>✅ Character in T-pose or A-pose</li>
+                    <li>✅ Applied all transforms (<code>Object → Apply → All Transforms</code>)</li>
+                    <li>✅ Rigify addon is enabled</li>
+                    <li>✅ Mesh is selected</li>
+                    <li>✅ Mesh is a single connected object (not multiple)</li>
+                    <li>✅ Character is roughly 1-3 Blender units tall</li>
+                </ul>
+
+                <h3>During Marker Placement</h3>
+                <ul>
+                    <li>✅ Use auto-detection first (faster)</li>
+                    <li>✅ Validate with "Check All Markers" before proceeding</li>
+                    <li>✅ Markers should look visually correct in the viewport</li>
+                    <li>✅ Use Live Symmetry to maintain bilateral accuracy</li>
+                </ul>
+
+                <h3>After Rigging</h3>
+                <ul>
+                    <li>✅ Test the rig in Pose Mode immediately</li>
+                    <li>✅ Apply "Tighten Weights" before manual painting</li>
+                    <li>✅ Test deformation while painting (don't wait until the end)</li>
+                    <li>✅ Save frequently</li>
+                </ul>
+
+                <h3>Performance Tips</h3>
+                <ul>
+                    <li>💨 Detection is faster on simpler meshes (high poly = longer detection time)</li>
+                    <li>💨 Use geometric detection first; it's faster than AI</li>
+                    <li>💨 Close unnecessary viewports/windows to free up GPU memory</li>
+                    <li>💨 Disable preview rendering while adjusting markers</li>
+                </ul>
+            </section>
+
+            <section id="faq">
+                <h2>Frequently Asked Questions</h2>
+
+                <div class="faq-item">
+                    <h3>Q: Can I use Easy Rigify with Rigify's other features?</h3>
+                    <p><strong>A:</strong> Yes! Easy Rigify creates a standard Rigify rig. You can manually tweak the control shapes, add custom controls, or use any other Rigify features after generation.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: Do both editions work together?</h3>
+                    <p><strong>A:</strong> Yes. A .blend file saved in the Full Edition opens in Lite and uses geometric detection. You can switch between them (one at a time) for the same project.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: Can I use this for non-humanoid characters?</h3>
+                    <p><strong>A:</strong> Not officially. Easy Rigify is built for humanoid characters (bipeds with arms, legs, hands, and face). Quadrupeds or alien anatomy would need manual marker placement.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: What's the maximum mesh size?</h3>
+                    <p><strong>A:</strong> No hard limit, but detection gets slower with very high poly counts (millions of vertices). Consider decimating for faster detection.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: Can I animate right after rigging?</h3>
+                    <p><strong>A:</strong> Yes, but we recommend testing the rig's deformation first (pose a few test positions). If it looks good, you're ready to animate.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: Does it work with character assets from 3D marketplaces?</h3>
+                    <p><strong>A:</strong> Usually yes! As long as the character is humanoid and the mesh is clean (no floating bits, correct normals), Easy Rigify should work.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: Can I export the rig to game engines?</h3>
+                    <p><strong>A:</strong> Yes. Export as FBX or glTF from Blender. The Rigify rig is a standard armature and works with any engine that supports skeletal animation (Unity, Unreal, etc.).</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: Is internet needed?</h3>
+                    <p><strong>A:</strong> No. Everything runs on your machine. The full edition's AI runtime is bundled and runs locally.</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: How do I report a bug?</h3>
+                    <p><strong>A:</strong> Go to the <a href="https://github.com/dwaynejnr-alt/Easy-Rigify" target="_blank">GitHub repository</a> and open an issue. Include:</p>
+                    <ul>
+                        <li>Your Blender version</li>
+                        <li>Steps to reproduce</li>
+                        <li>Screenshot or error message</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="contact">
+                <h2>Get Help</h2>
+                <p>Can't find your answer? Reach out:</p>
+                <ul>
+                    <li>📧 <a href="mailto:dwayne.jnr@gmail.com">Email</a> for direct support</li>
+                    <li>🐛 <a href="https://github.com/dwaynejnr-alt/Easy-Rigify/issues" target="_blank">GitHub Issues</a> for bug reports</li>
+                    <li>📖 <a href="index.html">Back to Documentation</a></li>
+                </ul>
+            </section>
+
+        </main>
+
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <h4>On This Page</h4>
+                <ul>
+                    <li><a href="#common">Common Issues</a></li>
+                    <li><a href="#tips">Best Practices</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="#contact">Get Help</a></li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
+        </div>
+    </footer>
+</body>
+</html>

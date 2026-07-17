@@ -1,5 +1,6 @@
-# pipeline.py — Deformation pipeline, SurgicalWeightFixer, SmartBind, and skinning panel.
+﻿# pipeline.py — Deformation pipeline, SurgicalWeightFixer, SmartBind, and skinning panel.
 import bpy
+from .constants import dbg
 import bmesh
 import numpy as np
 from mathutils import Vector, kdtree
@@ -668,7 +669,7 @@ class DeformationPipeline:
         valid  = totals > 0.001
         if valid.any():
             w[valid] = w[valid] / totals[valid, np.newaxis]
-        print(f"  Final normalize: {int(valid.sum())} vertices normalized")
+        dbg(f"  Final normalize: {int(valid.sum())} vertices normalized")
 
         self._apply_weights_to_mesh()
         return True
@@ -708,7 +709,7 @@ class DeformationPipeline:
         valid  = totals > 0.001
         if valid.any():
             w[valid] = w[valid] / totals[valid, np.newaxis]
-        print(f"  Final normalize: {int(valid.sum())} vertices normalized")
+        dbg(f"  Final normalize: {int(valid.sum())} vertices normalized")
 
         self._apply_weights_to_mesh()
         return True
@@ -748,7 +749,7 @@ class DeformationPipeline:
                   @ Matrix.Translation(-_pivot))
             self.mesh_obj.matrix_world     = _S @ _orig_mesh_world
             self.armature_obj.matrix_world = _S @ _orig_arm_world
-            print(f"  Scale fix ON: scaled up 10× (shared pivot) for binding")
+            dbg(f"  Scale fix ON: scaled up 10× (shared pivot) for binding")
 
         try:
             use_proxy = (self.config.get('optimize_highres', False)
@@ -805,9 +806,9 @@ class DeformationPipeline:
         self._read_weights_from_mesh()
 
         stats = self._analyze_weight_quality()
-        print(f"\nBase weights quality:")
-        print(f"  Avg influences per vertex: {stats['avg_influences']:.1f}")
-        print(f"  Cross-side bleeders: {stats['cross_side_count']}")
+        dbg(f"\nBase weights quality:")
+        dbg(f"  Avg influences per vertex: {stats['avg_influences']:.1f}")
+        dbg(f"  Cross-side bleeders: {stats['cross_side_count']}")
         return True
 
     def _generate_base_via_proxy(self):
@@ -854,7 +855,7 @@ class DeformationPipeline:
 
         # Remove proxy
         bpy.data.objects.remove(proxy, do_unlink=True)
-        print(f"  High-res proxy bind complete (original: {len(self.mesh.vertices)} verts)")
+        dbg(f"  High-res proxy bind complete (original: {len(self.mesh.vertices)} verts)")
 
     # ── Stage 1.5 ─────────────────────────────────────────────────────────────
 
@@ -890,7 +891,7 @@ class DeformationPipeline:
             weights[:, gi] = col
 
         self.weight_data.weights = weights
-        print(f"  Post-cylinder smooth: {iters} passes × factor={factor:.2f}")
+        dbg(f"  Post-cylinder smooth: {iters} passes × factor={factor:.2f}")
         return True
 
     def _stage_cylinder_cleanup(self) -> bool:
@@ -1010,7 +1011,7 @@ class DeformationPipeline:
                 weights[fth_wi[tiny], gi] = 0.0
                 faded += int(fade_mask.sum())
 
-        print(f"  Cylinder cleanup: zeroed {zeroed}, faded {faded} weights")
+        dbg(f"  Cylinder cleanup: zeroed {zeroed}, faded {faded} weights")
         return True
 
     # ── Stage 2 ───────────────────────────────────────────────────────────────
@@ -1048,7 +1049,7 @@ class DeformationPipeline:
         removed_count        = int(remove_mask.sum())
         weights[remove_mask] = 0.0
 
-        print(f"  Cross-side: removed {removed_count} weights")
+        dbg(f"  Cross-side: removed {removed_count} weights")
         return True
 
     def _find_symmetry_plane(self):
@@ -1150,13 +1151,13 @@ class DeformationPipeline:
         total = 0
         for label, bone_list, enabled, feather in section_defs:
             if not enabled:
-                print(f"  Surgical {label:<12}: OFF")
+                dbg(f"  Surgical {label:<12}: OFF")
                 continue
             n = surgical.tighten_section(weights, group_names, bone_list, feather, center_x)
             total += n
-            print(f"  Surgical {label:<12}: feather={feather:.2f}  bones={len(bone_list)}  verts_adjusted={n}")
+            dbg(f"  Surgical {label:<12}: feather={feather:.2f}  bones={len(bone_list)}  verts_adjusted={n}")
 
-        print(f"  Surgical tighten: adjusted {total} weights")
+        dbg(f"  Surgical tighten: adjusted {total} weights")
         return True
 
     # ── Stage 5 ───────────────────────────────────────────────────────────────
@@ -1171,7 +1172,7 @@ class DeformationPipeline:
         factor = float(cfg.get('factor', 0.3))
 
         if iters == 0 or factor <= 0.0:
-            print(f"  Smooth: skipped (iterations={iters}, factor={factor:.2f})")
+            dbg(f"  Smooth: skipped (iterations={iters}, factor={factor:.2f})")
             return True
 
         weights     = self.weight_data.weights
@@ -1184,7 +1185,7 @@ class DeformationPipeline:
                        if not self._is_face_bone(gn)
                        and self._classify_bone_type(gn) != 'FINGER']
         if not smooth_cols:
-            print("  Smooth: no non-face bones found, skipped")
+            dbg("  Smooth: no non-face bones found, skipped")
             return True
 
         # Freeze face + finger bone columns
@@ -1228,7 +1229,7 @@ class DeformationPipeline:
                 weights[:, gi] = sm[:, gi]
 
         self.weight_data.weights = weights
-        print(f"  Smooth: {iters} passes × factor={factor:.2f}, "
+        dbg(f"  Smooth: {iters} passes × factor={factor:.2f}, "
               f"{len(smooth_cols)} / {len(group_names)} columns active; "
               f"fingers 1 light pass ({len(finger_cols)} cols)")
         return True
@@ -1286,7 +1287,7 @@ class DeformationPipeline:
             weights[has_w, gi]  = main_w * (1.0 - frac)
             weights[has_w, ti] += main_w * frac    # accumulate, don't overwrite
             adjusted += len(has_w)
-        print(f"  Twist distribution (axial gradient): {adjusted} vertices adjusted")
+        dbg(f"  Twist distribution (axial gradient): {adjusted} vertices adjusted")
         return True
 
     # ── Stage 6 ───────────────────────────────────────────────────────────────
@@ -1308,7 +1309,7 @@ class DeformationPipeline:
                 weights[vi] = new_vw
         self.weight_data.weights = weights
         avg = np.count_nonzero(weights > 0.001, axis=1).mean()
-        print(f"  Limited to {max_bones} bones. Avg influences: {avg:.1f}")
+        dbg(f"  Limited to {max_bones} bones. Avg influences: {avg:.1f}")
         return True
 
     # ── Stage 8 ───────────────────────────────────────────────────────────────
@@ -1323,13 +1324,13 @@ class DeformationPipeline:
             self._fix_orphans_from_neighbors(orphan_mask)
             self.warnings.append(f"Fixed {n_orphans} orphan vertices")
         inf_counts = np.count_nonzero(weights > 0.001, axis=1)
-        print(f"\n{'='*50}")
-        print(f"FINAL WEIGHT QUALITY REPORT")
-        print(f"{'='*50}")
-        print(f"  Groups: {weights.shape[1]}")
-        print(f"  Avg influences per vertex: {inf_counts.mean():.1f}")
-        print(f"  Single-bone vertices: {int((inf_counts == 1).sum())}")
-        print(f"  Orphans fixed: {n_orphans}")
+        dbg(f"\n{'='*50}")
+        dbg(f"FINAL WEIGHT QUALITY REPORT")
+        dbg(f"{'='*50}")
+        dbg(f"  Groups: {weights.shape[1]}")
+        dbg(f"  Avg influences per vertex: {inf_counts.mean():.1f}")
+        dbg(f"  Single-bone vertices: {int((inf_counts == 1).sum())}")
+        dbg(f"  Orphans fixed: {n_orphans}")
         return True
 
     def _fix_orphans_from_neighbors(self, orphan_mask):
@@ -1693,10 +1694,10 @@ class AUTORIG_OT_SmartBind(bpy.types.Operator):
         scfg = pipeline.config.get('surgical', {})
         sm   = pipeline.config.get('smooth', {})
         li   = pipeline.config.get('limit_influences', {})
-        print("\n=== PIPELINE SETTINGS ===")
-        print(f"  Mesh  : {mesh_obj.name}")
-        print(f"  Smooth: {sm.get('iterations', '?')} iterations × {sm.get('factor', '?')} factor")
-        print(f"  Limit : {li.get('max_bones', '?')} max bones")
+        dbg("\n=== PIPELINE SETTINGS ===")
+        dbg(f"  Mesh  : {mesh_obj.name}")
+        dbg(f"  Smooth: {sm.get('iterations', '?')} iterations × {sm.get('factor', '?')} factor")
+        dbg(f"  Limit : {li.get('max_bones', '?')} max bones")
         for label, en_key, fth_key in [
             ("Fingers",    'fix_fingers',    'fingers_feather'),
             ("Forearms",   'fix_forearms',   'forearms_feather'),
@@ -1708,12 +1709,12 @@ class AUTORIG_OT_SmartBind(bpy.types.Operator):
             ("Neck",       'fix_neck',       'neck_feather'),
         ]:
             state = 'ON ' if scfg.get(en_key, False) else 'OFF'
-            print(f"  {label:<12}: {state}  feather={scfg.get(fth_key, '?')}")
-        print("=========================\n")
+            dbg(f"  {label:<12}: {state}  feather={scfg.get(fth_key, '?')}")
+        dbg("=========================\n")
 
         success = pipeline.run_full_pipeline()
         if success:
-            print(pipeline.get_stage_report())
+            dbg(pipeline.get_stage_report())
 
         for msg in pipeline.warnings[:3]:
             self.report({'WARNING'}, msg)
@@ -1821,7 +1822,7 @@ class AUTORIG_OT_SmartBind(bpy.types.Operator):
 
         success = pipeline.run_pipeline_from_existing_weights()
         if success:
-            print(pipeline.get_stage_report())
+            dbg(pipeline.get_stage_report())
 
         for msg in pipeline.warnings[:3]:
             self.report({'WARNING'}, msg)

@@ -1,5 +1,6 @@
-# weight_tools.py — Weight mirroring, paint workflow, transfer, editing, and advanced panel.
+﻿# weight_tools.py — Weight mirroring, paint workflow, transfer, editing, and advanced panel.
 import bpy
+from .constants import dbg
 import bmesh
 import numpy as np
 from mathutils import Vector, kdtree
@@ -1427,7 +1428,7 @@ class WEIGHTADV_OT_process(bpy.types.Operator):
                 islands = WeightVisualizer(obj).find_influence_islands(target)
                 self.report({'INFO'}, f"Found {len(islands)} influence islands")
                 for i, island in enumerate(islands):
-                    print(f"Island {i + 1}: {len(island)} vertices")
+                    dbg(f"Island {i + 1}: {len(island)} vertices")
 
             elif self.process_type == 'REPORT':
                 viz = WeightVisualizer(obj)
@@ -1436,11 +1437,11 @@ class WEIGHTADV_OT_process(bpy.types.Operator):
                 for gname in groups_to_report:
                     rep = viz.generate_weight_report(gname)
                     if rep:
-                        print(f"\n=== {rep['group_name']} ===")
-                        print(f"Vertices: {rep['influenced_vertices']} ({rep['influence_percentage']:.1f}%)")
-                        print(f"Weight range: {rep['min_weight']:.3f} - {rep['max_weight']:.3f}")
-                        print(f"Mean (non-zero): {rep['mean_weight']:.3f}")
-                        print(f"Islands: {rep['num_islands']}")
+                        dbg(f"\n=== {rep['group_name']} ===")
+                        dbg(f"Vertices: {rep['influenced_vertices']} ({rep['influence_percentage']:.1f}%)")
+                        dbg(f"Weight range: {rep['min_weight']:.3f} - {rep['max_weight']:.3f}")
+                        dbg(f"Mean (non-zero): {rep['mean_weight']:.3f}")
+                        dbg(f"Islands: {rep['num_islands']}")
                 if self.group_name:
                     rep = viz.generate_weight_report(self.group_name)
                     if rep:

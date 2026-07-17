@@ -1,4 +1,4 @@
-"""
+﻿"""
 Custom Rig Preserve
 ====================
 Backs up user-added constraints (including on ORG-/MCH- bones), custom bones,
@@ -7,6 +7,7 @@ Backup is stored as JSON on the scene so it survives undo and file save/reload.
 """
 
 import bpy
+from .constants import dbg
 import json
 
 
@@ -371,7 +372,7 @@ class RigifyCustomPreserve:
                         t.transform_space = td['transform_space']
                         t.data_path       = td['data_path']
             except Exception as e:
-                print(f"[CustomRig] driver restore failed on {dd['data_path']}: {e}")
+                dbg(f"[CustomRig] driver restore failed on {dd['data_path']}: {e}")
 
     def restore_bone_properties(self, rig):
         for bname, props in self.data['bone_properties'].items():
@@ -602,9 +603,9 @@ class AUTORIG_OT_PreserveGenerate(bpy.types.Operator):
         ok, msg = p.backup()
         if ok:
             props.backup_json = p.to_json()
-            print(f"[CustomRig] {msg}")
+            dbg(f"[CustomRig] {msg}")
         else:
-            print(f"[CustomRig] No existing rig to backup — generating fresh")
+            dbg(f"[CustomRig] No existing rig to backup — generating fresh")
             p = None
 
         # 2 — set finger rotation axes (same as GenerateRig)

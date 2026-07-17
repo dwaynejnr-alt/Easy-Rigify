@@ -1,6 +1,7 @@
-# joint_cleaner.py — RigifyJointCleaner, joint analysis/clean operators,
+﻿# joint_cleaner.py — RigifyJointCleaner, joint analysis/clean operators,
 #                    DEF bone influence report, and smooth weight operators.
 import bpy
+from .constants import dbg
 import re
 import numpy as np
 from mathutils import Vector
@@ -408,18 +409,18 @@ class RIGIFYJOINT_OT_analyze(bpy.types.Operator):
         fix_count   = sum(1 for e in report if e['status'] == 'FIX')
         check_count = sum(1 for e in report if e['status'] == 'CHECK')
 
-        print("\n" + "=" * 68)
-        print("RIGIFY JOINT BLEEDING ANALYSIS  (DEF- bones, auto-radius)")
-        print("=" * 68)
+        dbg("\n" + "=" * 68)
+        dbg("RIGIFY JOINT BLEEDING ANALYSIS  (DEF- bones, auto-radius)")
+        dbg("=" * 68)
         for entry in sorted(report, key=lambda x: x['bleed_pct'], reverse=True):
             tag = '!!' if entry['status'] == 'FIX' else '? ' if entry['status'] == 'CHECK' else '  '
             src = entry.get('radius_src', '?')
-            print(f"  {tag} {entry['bone']:32s}  "
+            dbg(f"  {tag} {entry['bone']:32s}  "
                   f"bleed={entry['bleed_pct']:5.1f}%  "
                   f"r={entry['radius']:.3f}({src})  [{entry['type']}]")
-        print(f"\n  {fix_count} need fixing, {check_count} to check, "
+        dbg(f"\n  {fix_count} need fixing, {check_count} to check, "
               f"{len(report) - fix_count - check_count} OK")
-        print("=" * 68 + "\n")
+        dbg("=" * 68 + "\n")
 
         self.report({'INFO'},
                     f"{fix_count} need fixing, {check_count} to check — see console")
@@ -663,28 +664,28 @@ class AUTORIG_OT_DEFBoneReport(bpy.types.Operator):
     @staticmethod
     def _print_report(cache, sections, mesh_name):
         W = 72
-        print("\n" + "=" * W)
-        print(f"  WEIGHT SHARING REPORT — L side + Spine   [{mesh_name}]")
-        print("=" * W)
+        dbg("\n" + "=" * W)
+        dbg(f"  WEIGHT SHARING REPORT — L side + Spine   [{mesh_name}]")
+        dbg("=" * W)
         for sec_name, bones in sections:
-            print(f"\n  ── {sec_name} {'─' * (W - 6 - len(sec_name))}")
+            dbg(f"\n  ── {sec_name} {'─' * (W - 6 - len(sec_name))}")
             for bone in bones:
                 d = cache.get(bone)
                 if d is None:
-                    print(f"    {bone}  (not found / no influence)")
+                    dbg(f"    {bone}  (not found / no influence)")
                     continue
-                print(f"\n    {bone:<35}  {d['total']:>5}v  "
+                dbg(f"\n    {bone:<35}  {d['total']:>5}v  "
                       f"{d['pct_mesh']:>5.1f}%mesh  avg={d['avg_w']:.3f}")
                 if not d['sharing']:
-                    print("      (no overlap with other bones)")
+                    dbg("      (no overlap with other bones)")
                     continue
                 for s in d['sharing'][:10]:
                     tag = "share" if not s['bleed'] else "BLEED"
                     marker = "  " if not s['bleed'] else "!!"
-                    print(f"    {marker} {tag}  {s['name']:<35} "
+                    dbg(f"    {marker} {tag}  {s['name']:<35} "
                           f"{s['count']:>5}v ({s['pct']:>4.0f}%)  "
                           f"peer_avg={s['avg_other']:.3f}")
-        print("\n" + "=" * W + "\n")
+        dbg("\n" + "=" * W + "\n")
 
     def invoke(self, context, event):
         obj = context.active_object

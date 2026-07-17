@@ -153,6 +153,7 @@ from .custom_rig import (
 from .pipeline      import draw_skinning_tab
 from .weight_tools  import draw_weights_tab, draw_visualization_section
 from .fan_bones     import draw_fan_bones_section
+from .game_export   import AUTORIG_OT_ExportGame, draw_game_export_section
 from .utils         import get_icon
 # DEV-ONLY data-generation tools: registered only when the dev/ folder exists
 # (the shipped zip excludes dev/, so customer installs never see these panels;
@@ -234,6 +235,8 @@ class AUTORIG_PT_Main(bpy.types.Panel):
         elif tab == 'TOOLS':
             draw_fan_bones_section(layout, context)
             layout.separator()
+            draw_game_export_section(layout, context)
+            layout.separator()
             draw_visualization_section(layout, context)
 
 
@@ -312,6 +315,8 @@ CLASSES = (
     FanBoneProperties,
     FANBONE_OT_generate,
     FANBONE_OT_remove,
+    # Game export
+    AUTORIG_OT_ExportGame,
     # Custom rig preserve (PropertyGroup before operators)
     AutoRigPreserveProps,
     AUTORIG_OT_PreserveBackup,

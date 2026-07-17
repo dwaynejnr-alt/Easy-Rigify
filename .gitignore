@@ -40,6 +40,7 @@ Thumbs.db
 /dev/*
 !/dev/native/
 !/dev/build_lite.py
+!/dev/GAME_EXPORT_DESIGN.md
 /dev/native/_build/
 /dev/native/_rmodel_backup_v1/
 
@@ -53,5 +54,6 @@ Thumbs.db
 #   native/_ercrypto_*   (compiled crypto binaries, committed by CI)
 #   dev/native/*.c,*.py  (crypto build source — THIS IS WHY THE REPO MUST BE PRIVATE)
 #   dev/build_lite.py    (builds the Lite edition — see section 9.1 of DOCUMENTATION.txt)
+#   dev/GAME_EXPORT_DESIGN.md  (game-engine export design + bug post-mortem)
 #   wheels/*.whl         (bundled onnxruntime + Pillow, ~153MB — see
 #                          blender_manifest.toml `wheels=` and dev/native/download_wheels.py)

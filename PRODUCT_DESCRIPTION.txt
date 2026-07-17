@@ -7,10 +7,10 @@ WHAT IT IS
 ------------------------------------------------------------------------
 Easy Rigify turns the slow, fiddly part of character rigging — lining a
 Rigify metarig up with your model — into a guided, click-driven workflow.
-You drop a handful of markers onto your character, and the addon snaps a
-full Rigify metarig onto them, generates the rig, and then helps you bind
-and clean up the skin weights. It works on any humanoid mesh, from
-realistic scans to stylised cartoon characters, at any scale.
+You drop a handful of visible markers onto your character, and the addon
+snaps a full Rigify metarig onto them, generates the rig, and then helps
+you bind and clean up the skin weights. It works on any humanoid mesh,
+from realistic scans to stylised cartoon characters, at any scale.
 
 Instead of hand-editing dozens of bones in edit mode, you place markers
 you can actually see in the viewport, let the addon do the alignment
@@ -27,12 +27,24 @@ WHO IT'S FOR
   is tedious and error-prone.
 
 
+TWO EDITIONS
+------------------------------------------------------------------------
+- EASY RIGIFY (full) — AI + geometric detection for body, fingers, and
+  face. The AI runs entirely on your machine and is bundled in; there is
+  nothing extra to install.
+- EASY RIGIFY LITE — the same workflow with geometric detection only, no
+  AI. About 1 MB, so it installs instantly and has no runtime that can
+  fail to load on an unusual platform.
+
+Scenes are compatible both ways: a file saved in the full edition opens
+in Lite and simply uses the geometric engine. The two editions cannot be
+installed at the same time.
+
+
 THE CORE WORKFLOW
 ------------------------------------------------------------------------
 The addon lives in the 3D Viewport sidebar (press N) under the
-"Easy Rigify" tab, organised into four simple stages: Markers, Rig,
-Skin, and Tools. A live status box always tells you the recommended
-next step, so you never have to guess what comes next.
+"Easy Rigify" tab, organised into four stages:
 
   1. MARKERS  — Place markers on the body, hands, and face.
   2. RIG      — Add a Rigify metarig, align it to the markers, generate.
@@ -47,30 +59,25 @@ KEY FEATURES
   "Auto Detect Body" analyses your mesh and places the full body-and-leg
   marker set — spine, pelvis, shoulders, arms, legs, and feet —
   automatically. Marker sizes scale themselves to fit the character, so
-  it looks right whether your model is game-scale or a giant.
+  it looks right whether your model is game-scale or a giant. In the full
+  edition, "EasyDetect Body" does the same with a trained neural detector
+  for tricky proportions.
 
 • SMART FINGER PLACEMENT
-  Place all fingers with a fast two-click-per-finger workflow (tip, then
-  knuckle; the middle joints are interpolated for you). A per-finger
-  picker lets you redo just the thumb, index, ring, and so on. The right
-  hand is mirrored automatically from the left. A "Straighten Fingers"
-  pass cleans up any side-to-side wander in the joints.
+  "EasyDetect Fingers" places every hand and finger joint in one click.
+  Prefer to do it by hand? "Place All Fingers" is a fast two-click-per-
+  finger workflow (tip, then knuckle; the middle joints are interpolated
+  for you), with a per-finger picker to redo just the thumb, index, ring,
+  and so on. The right hand mirrors automatically from the left, and a
+  "Straighten Fingers" pass cleans up side-to-side wander.
 
 • STEP-BY-STEP FACIAL MARKERS
   A guided, section-by-section face detector places markers for brows,
   eyes, eyelids, lips, nose, cheeks, chin, jaw, and forehead by reading
-  your actual eye, brow, teeth, and tongue meshes. You can point the
-  addon at separate eyeball, tongue, teeth, and eyebrow objects for
-  accurate results on complex face rigs, and detect each region on its
-  own so you stay in control.
-
-• AI-ASSISTED DETECTION (OPTIONAL)
-  With one click you can install a lightweight on-device AI runtime that
-  unlocks neural "AI Detect Body" and "AI Detect Fingers" — trained
-  detectors that place markers even on unusual proportions and stylised
-  hands. It runs entirely on your machine, installs and uninstalls from
-  the addon preferences with a single button, and the addon works fully
-  without it.
+  your actual eye, brow, teeth, and tongue meshes. Point the addon at
+  separate eyeball, tongue, teeth, and eyebrow objects for accurate
+  results on complex face rigs, and detect each region on its own so you
+  stay in control. The full edition adds a one-click "EasyDetect Face".
 
 • MIRROR & LIVE SYMMETRY
   Mirror any side to the other (L→R or R→L) in one click. Turn on Live
@@ -84,7 +91,7 @@ KEY FEATURES
   "Generate Rig" produces the final Rigify control rig.
 
 • REGENERATE WITHOUT LOSING WORK
-  Backup and restore custom changes so you can tweak the metarig and
+  Back up and restore custom changes so you can tweak the metarig and
   regenerate the Rigify rig without throwing away your edits.
 
 • SKINNING & WEIGHT TOOLKIT
@@ -101,9 +108,10 @@ KEY FEATURES
 
 • GUIDED EVERY STEP
   Selected markers show an on-screen help image and hint text telling you
-  exactly where each one goes. A built-in diagnostics check confirms all
-  required markers are placed before you align, and a Help button links
-  to online documentation for each tab.
+  exactly where each one goes. "Check All Markers" confirms every
+  required marker is placed — and flags any that are missing, overlapping,
+  or left outside the mesh — before you align. A Help button links to the
+  online documentation for each tab.
 
 
 WHAT MAKES IT DIFFERENT
@@ -112,13 +120,14 @@ WHAT MAKES IT DIFFERENT
 - Markers are visible, movable, and mirrored, so corrections are obvious.
 - The whole path from raw mesh to bound, cleaned rig lives in one panel.
 - Works across body, hands, and face — not just the torso.
-- Optional on-device AI, but a complete geometric workflow without it.
+- On-device AI in the full edition, with a complete geometric workflow
+  that runs with or without it.
 
 
 REQUIREMENTS
 ------------------------------------------------------------------------
 - Blender 4.2 or newer.
 - Rigify (ships with Blender) enabled.
-- Optional: the one-click AI runtime for neural body/finger detection.
+- No internet connection or account required; everything runs locally.
 
 ========================================================================

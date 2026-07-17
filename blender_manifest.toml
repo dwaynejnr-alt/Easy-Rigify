@@ -22,6 +22,37 @@ copyright = [
   "2024-2026 Dwayne Jones",
 ]
 
+# Bundled 3rd-party wheels (onnxruntime + Pillow, ARP-style): Blender installs
+# the matching one automatically when the addon is enabled — offline, no pip,
+# no "Install ONNX Runtime" button. Only the two LEAF packages are bundled;
+# their PyPI-declared transitive deps (sympy, protobuf, coloredlogs, mpmath,
+# flatbuffers, humanfriendly, packaging) are verified NOT imported at runtime
+# by either `import onnxruntime` or a real InferenceSession().run() call - pip
+# installs them anyway (metadata says "required"), but nothing in this addon's
+# code path touches them. numpy is deliberately NOT bundled: Blender's own
+# numpy is already on sys.path, and the wheel site-packages dir is inserted
+# BEFORE it, so bundling our own numpy would shadow Blender's (the crash this
+# addon's dependency code has guarded against since 2026-06-30 — see
+# [[project_onnx_deps_install]]). cp311 covers Blender 4.2-4.5; cp313 covers
+# Blender 5.x. Re-run dev/native/download_wheels.py and update this list when
+# either package version changes.
+wheels = [
+  "./wheels/onnxruntime-1.20.1-cp311-cp311-win_amd64.whl",
+  "./wheels/onnxruntime-1.20.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+  "./wheels/onnxruntime-1.20.1-cp311-cp311-macosx_13_0_universal2.whl",
+  "./wheels/onnxruntime-1.20.1-cp313-cp313-win_amd64.whl",
+  "./wheels/onnxruntime-1.20.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+  "./wheels/onnxruntime-1.20.1-cp313-cp313-macosx_13_0_universal2.whl",
+  "./wheels/pillow-12.3.0-cp311-cp311-win_amd64.whl",
+  "./wheels/pillow-12.3.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+  "./wheels/pillow-12.3.0-cp311-cp311-macosx_11_0_arm64.whl",
+  "./wheels/pillow-12.3.0-cp311-cp311-macosx_10_10_x86_64.whl",
+  "./wheels/pillow-12.3.0-cp313-cp313-win_amd64.whl",
+  "./wheels/pillow-12.3.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+  "./wheels/pillow-12.3.0-cp313-cp313-macosx_11_0_arm64.whl",
+  "./wheels/pillow-12.3.0-cp313-cp313-macosx_10_13_x86_64.whl",
+]
+
 [build]
 paths_exclude_pattern = [
   "__pycache__/",

@@ -49,3 +49,5 @@ Thumbs.db
 #   models/*.rmodel      (ENCRYPTED, needed to ship)
 #   native/_ercrypto_*   (compiled crypto binaries, committed by CI)
 #   dev/native/*.c,*.py  (crypto build source — THIS IS WHY THE REPO MUST BE PRIVATE)
+#   wheels/*.whl         (bundled onnxruntime + Pillow, ~153MB — see
+#                          blender_manifest.toml `wheels=` and dev/native/download_wheels.py)

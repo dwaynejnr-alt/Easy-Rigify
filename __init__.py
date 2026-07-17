@@ -70,8 +70,6 @@ from .markers import (
 )
 from . import markers as _markers_mod
 from .ai_detect import (
-    AUTORIG_OT_InstallAIDeps,
-    AUTORIG_OT_UninstallAIDeps,
     AUTORIG_OT_AIDetectBody,
     AUTORIG_OT_AIDetectFace,
     AUTORIG_OT_AIDetectFingers,
@@ -246,8 +244,6 @@ CLASSES = (
     AUTORIG_OT_AIDetectFace,
     AUTORIG_OT_AIDetectFingers,
     AUTORIG_OT_ResolveFinger,
-    AUTORIG_OT_InstallAIDeps,
-    AUTORIG_OT_UninstallAIDeps,
     AUTORIG_OT_AutoDetectArms,
     AUTORIG_OT_PlaceFingerMarkers,
     AUTORIG_OT_StraightenFingerMarkers,

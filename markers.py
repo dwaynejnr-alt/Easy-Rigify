@@ -5694,17 +5694,19 @@ class AUTORIG_Prefs(bpy.types.AddonPreferences):
                 )
 
         # ── AI dependencies ──────────────────────────────────────────────────
+        # onnxruntime + Pillow ship as bundled wheels — Blender installs the
+        # matching one automatically when the addon is enabled. Nothing for
+        # the user to install/uninstall; this is a status line only.
         layout.separator()
         ai_box = layout.box()
         ai_box.label(text="EasyDetect (ONNX Runtime)", icon='SHADERFX')
         if _ai.is_available():
             ai_box.label(text="onnxruntime + Pillow: Ready", icon='CHECKMARK')
-            row = ai_box.row(align=True)
-            row.operator("autorig.install_ai_deps", text="Reinstall", icon='FILE_REFRESH')
-            row.operator("autorig.uninstall_ai_deps", text="Uninstall", icon='TRASH')
         else:
-            ai_box.label(text="onnxruntime + Pillow: Not installed", icon='ERROR')
-            ai_box.operator("autorig.install_ai_deps", text="Install ONNX Runtime", icon='IMPORT')
+            ai_box.label(text="onnxruntime + Pillow: not available on this",
+                         icon='ERROR')
+            ai_box.label(text="platform/Blender version — using the")
+            ai_box.label(text="geometric engines instead.")
 
         # ── Other preferences ────────────────────────────────────────────────
         layout.separator()

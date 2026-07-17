@@ -17,6 +17,15 @@ from .utils import get_or_create_collection, make_empty, _mesh_bbox_world
 
 
 # ── Dependency management ─────────────────────────────────────────────────────
+#
+# onnxruntime + Pillow ship as BUNDLED WHEELS (blender_manifest.toml `wheels =
+# [...]`, ARP-style): Blender installs the platform/Python-matching wheel into
+# a managed site-packages directory and puts it on sys.path automatically when
+# the addon is enabled, before register() runs. So no pip, no install button,
+# no manual sys.path management — a plain import is enough. If a user is on a
+# platform/Python combo with no bundled wheel (rare; see the wheels= comment
+# in the manifest for what's covered), the import fails and AI features report
+# unavailable — the existing geometric-fallback paths handle that gracefully.
 
 _BODY_MODEL_FILENAME = os.path.join("models", "body_pose.rmodel")
 
@@ -26,39 +35,10 @@ _is_available_cache:      object = None   # True / False / None=unchecked
 _body_onnx_avail_cache:   object = None   # True / False / None=uncheckedæ
 
 
-def _deps_target_dir():
-    """Dedicated folder for our pip-installed AI deps.
-
-    A subfolder of Blender's user scripts/modules (always writable, no admin even
-    when Blender is in Program Files). We deliberately use a DEDICATED subfolder
-    rather than scripts/modules directly, and add it to the END of sys.path, so:
-      * Blender's own numpy always wins (ours is never imported) -> no version
-        shadowing and, crucially, our numpy .pyd is never locked by the running
-        process, so the Uninstall button can delete this whole folder cleanly;
-      * onnxruntime (which Blender lacks) is still found here.
-    """
-    import bpy
-    base = bpy.utils.user_resource('SCRIPTS', path="modules", create=True)
-    target = os.path.join(base, "easy_rigify_deps")
-    os.makedirs(target, exist_ok=True)
-    return target
-
-
-def _ensure_deps_on_path():
-    """Make the dedicated deps folder importable, appended LAST so it never
-    shadows Blender's bundled packages. Returns the folder path."""
-    import sys
-    target = _deps_target_dir()
-    if target not in sys.path:
-        sys.path.append(target)
-    return target
-
-
 def is_available():
     """Return True if the AI deps (onnxruntime + Pillow) are importable."""
     global _is_available_cache
     if _is_available_cache is None:
-        _ensure_deps_on_path()
         try:
             import onnxruntime  # noqa: F401
             import PIL  # noqa: F401  (Pillow — image loading has no fallback)
@@ -89,7 +69,6 @@ def _body_onnx_path():
 def is_body_onnx_available():
     global _body_onnx_avail_cache
     if _body_onnx_avail_cache is None:
-        _ensure_deps_on_path()
         try:
             import onnxruntime  # noqa: F401
             import PIL  # noqa: F401
@@ -97,110 +76,6 @@ def is_body_onnx_available():
         except ImportError:
             _body_onnx_avail_cache = False
     return _body_onnx_avail_cache
-
-
-def install_dependencies():
-    """
-    pip-install onnxruntime and scipy into our dedicated deps folder
-    (see _deps_target_dir). Blocks until complete; raises RuntimeError on failure.
-
-    Why not Blender's bundled site-packages: when Blender is in C:\\Program Files
-    that folder needs admin rights, and pip then silently falls back to a --user
-    install that Blender never loads (the install "succeeds" but the import still
-    fails). The dedicated --target folder avoids that and keeps uninstall clean.
-    """
-    import subprocess
-    import sys
-    import importlib
-
-    target = _ensure_deps_on_path()
-
-    # Already fully installed? Don't run pip at all. Must check EVERY required dep
-    # (onnxruntime AND Pillow) — checking only onnxruntime would short-circuit on a
-    # machine that has onnxruntime from an older install but is missing Pillow, so
-    # Pillow would never get installed.
-    importlib.invalidate_caches()
-    try:
-        import onnxruntime  # noqa: F401
-        import PIL          # noqa: F401
-        return
-    except ImportError:
-        pass
-
-    # Make sure pip is available in the bundled Python.
-    pip_check = subprocess.run(
-        [sys.executable, "-m", "pip", "--version"],
-        capture_output=True, text=True,
-    )
-    if pip_check.returncode != 0:
-        subprocess.run([sys.executable, "-m", "ensurepip", "--upgrade"],
-                       capture_output=True, text=True, timeout=180)
-
-    # onnxruntime is PINNED: the latest (1.27) ships a native DLL that fails to
-    # initialize inside blender.exe ("DLL initialization routine failed") because it
-    # needs a newer MSVC runtime than Blender bundles. 1.20.1 loads cleanly in
-    # Blender 4.x. Pillow is required by the image-loading paths (Blender has no PIL).
-    # No scipy (it was only a PIL-absent fallback). No --upgrade.
-    result = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--disable-pip-version-check",
-         "--target", target, "onnxruntime==1.20.1", "Pillow"],
-        capture_output=True,
-        text=True,
-        timeout=600,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            (result.stderr or result.stdout or "pip install onnxruntime Pillow failed").strip()
-        )
-
-    # Drop the numpy that onnxruntime pulled in: Blender already provides numpy, and
-    # ours sits unused (this folder is last on sys.path). Removing it avoids any
-    # chance of an ABI mismatch / "cannot load module more than once" with Blender's
-    # numpy. Nothing here is loaded, so the delete always succeeds.
-    import shutil, glob
-    for _p in (glob.glob(os.path.join(target, "numpy"))
-               + glob.glob(os.path.join(target, "numpy.libs"))
-               + glob.glob(os.path.join(target, "numpy-*.dist-info"))):
-        shutil.rmtree(_p, ignore_errors=True)
-
-    # Newly written packages are invisible until the import-system caches are
-    # invalidated (the target dir was already scanned/empty). Then reset our caches
-    # so AI detection works without a Blender restart.
-    importlib.invalidate_caches()
-    global _is_available_cache, _body_onnx_avail_cache
-    _is_available_cache = None
-    _body_onnx_avail_cache = None
-
-
-def uninstall_dependencies():
-    """
-    Remove the dedicated AI-deps folder. Because nothing in it is ever imported
-    by the running Blender (it sits last on sys.path behind Blender's own copies),
-    none of its files are locked, so the whole folder deletes cleanly.
-
-    Returns (removed_anything: bool, leftover_path: str|None). leftover_path is set
-    if some files could not be deleted (a stray lock) and a restart is needed.
-    """
-    import shutil
-    import sys
-    import importlib
-
-    target = _deps_target_dir()
-    existed = os.path.isdir(target) and bool(os.listdir(target))
-    shutil.rmtree(target, ignore_errors=True)
-
-    if target in sys.path:
-        try:
-            sys.path.remove(target)
-        except ValueError:
-            pass
-    importlib.invalidate_caches()
-    global _is_available_cache, _body_onnx_avail_cache
-    _is_available_cache = None
-    _body_onnx_avail_cache = None
-
-    leftover = target if (os.path.isdir(target) and os.listdir(target)) else None
-    return existed, leftover
 
 
 # ── Orthographic rendering ────────────────────────────────────────────────────
@@ -2079,56 +1954,10 @@ _FACE_LM = {
 
 
 # ── Blender operators ─────────────────────────────────────────────────────────
-
-class AUTORIG_OT_InstallAIDeps(bpy.types.Operator):
-    """Install onnxruntime and scipy into Blender's Python (requires internet). Restart Blender after."""
-    bl_idname  = "autorig.install_ai_deps"
-    bl_label   = "Install AI Dependencies"
-    bl_options = {'REGISTER'}
-
-    def execute(self, _context):
-        try:
-            install_dependencies()
-        except Exception as e:
-            self.report({'ERROR'}, f"Install failed: {e}")
-            return {'CANCELLED'}
-        # Verify the install is actually importable now (catches the silent
-        # "succeeded but not on path" case that bit users before).
-        if is_available():
-            self.report({'INFO'}, "onnxruntime installed and ready. AI detection is active.")
-        else:
-            self.report(
-                {'WARNING'},
-                "Installed, but onnxruntime is not importable yet. Restart Blender; "
-                "if it still fails, see the system console for pip output.",
-            )
-        return {'FINISHED'}
-
-
-class AUTORIG_OT_UninstallAIDeps(bpy.types.Operator):
-    """Remove onnxruntime, scipy and their dependencies that this addon installed.
-This frees the disk space; the bundled models stay. Reinstall any time."""
-    bl_idname  = "autorig.uninstall_ai_deps"
-    bl_label   = "Uninstall ONNX Runtime"
-    bl_options = {'REGISTER'}
-
-    def execute(self, _context):
-        try:
-            existed, leftover = uninstall_dependencies()
-        except Exception as e:
-            self.report({'ERROR'}, f"Uninstall failed: {e}")
-            return {'CANCELLED'}
-        if leftover:
-            self.report(
-                {'WARNING'},
-                "Some files were in use and could not be removed. Restart Blender "
-                "and click Uninstall once more to finish.",
-            )
-        elif existed:
-            self.report({'INFO'}, "AI dependencies removed.")
-        else:
-            self.report({'INFO'}, "Nothing to remove — AI dependencies were not installed here.")
-        return {'FINISHED'}
+#
+# No install/uninstall operators: onnxruntime + Pillow ship as bundled wheels
+# (see the "Dependency management" section above) — Blender installs them
+# automatically when the addon is enabled, nothing for the user to trigger.
 
 
 # ── Scale normalization ───────────────────────────────────────────────────────

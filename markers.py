@@ -5018,9 +5018,37 @@ _STATUS_KEY_MARKERS = ["PELVIS", "NECK", "HEAD",
                        "THIGH_L", "THIGH_R", "FOOT_L", "FOOT_R"]
 
 
+def _markers_outside_mesh(body):
+    """Body markers (RigifyMarkers collection) whose world position falls outside
+    the body mesh's bounding box — usually a bad Auto Detect or an accidental drag.
+    A small margin (4% of the mesh's largest bbox dimension) avoids false positives
+    for markers that sit right on the surface."""
+    col = bpy.data.collections.get("RigifyMarkers")
+    if not col or body is None or body.type != 'MESH':
+        return []
+
+    corners = [body.matrix_world @ Vector(c) for c in body.bound_box]
+    xs = [c.x for c in corners]
+    ys = [c.y for c in corners]
+    zs = [c.z for c in corners]
+    margin = 0.04 * max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs), 1e-6)
+    lo = (min(xs) - margin, min(ys) - margin, min(zs) - margin)
+    hi = (max(xs) + margin, max(ys) + margin, max(zs) + margin)
+
+    out = []
+    for obj in col.objects:
+        if not obj.name.startswith("MARKER_"):
+            continue
+        p = obj.matrix_world.translation
+        if not (lo[0] <= p.x <= hi[0] and lo[1] <= p.y <= hi[1] and lo[2] <= p.z <= hi[2]):
+            out.append(obj.name[len("MARKER_"):])
+    return out
+
+
 def _compute_marker_status(context):
-    """Cheap workflow snapshot for the preflight box: body mesh, missing key markers,
-    unapplied transforms, rig state, and the recommended next step."""
+    """Workflow snapshot used by the Check All Markers operator: body mesh, missing
+    key markers, markers outside the mesh, unapplied transforms, and rig state.
+    Runs on explicit user action only — nothing draws it passively."""
     scene = context.scene
     props = getattr(scene, "autorig_face_objs", None)
     body  = getattr(props, "detect_body_obj", None) if props else None
@@ -5031,6 +5059,7 @@ def _compute_marker_status(context):
         body = act if (act and act.type == 'MESH' and not act.get("autorig_marker")) else None
 
     missing = [m for m in _STATUS_KEY_MARKERS if f"MARKER_{m}" not in bpy.data.objects]
+    outside = _markers_outside_mesh(body)
 
     # Unapplied transforms on the body mesh (scale especially poisons binding).
     xform = None
@@ -5050,46 +5079,7 @@ def _compute_marker_status(context):
             rig_state = "metarig"
 
     return {"body": body.name if body else None,
-            "missing": missing, "xform": xform, "rig_state": rig_state}
-
-
-def _draw_status_box(layout, context, placed, total):
-    """Compact one-line preflight: the recommended next step, plus a single short
-    problem summary only when something actually needs attention."""
-    st   = _panel_cache.get("status") or {}
-    miss = st.get("missing") or []
-    rs   = st.get("rig_state", "none")
-
-    problems = []
-    if not st.get("body"):
-        problems.append("no body mesh")
-    if placed == 0:
-        problems.append("no markers")
-    elif miss:
-        problems.append(f"{len(miss)} key marker(s) missing")
-    if st.get("xform"):
-        problems.append(f"apply {st['xform']}")
-
-    if not st.get("body"):
-        nxt = "Pick a Body Mesh"
-    elif placed == 0:
-        nxt = "Auto Detect Body"
-    elif miss:
-        nxt = "Place the missing markers"
-    elif rs == "none":
-        nxt = "Add a Rigify metarig"
-    elif rs == "metarig":
-        nxt = "Align Rig to Markers → Generate"
-    else:
-        nxt = "Rig ready — bind in the Skin tab"
-
-    box = layout.box()
-    box.row().label(text=f"Next: {nxt}",
-                    icon='ERROR' if problems else 'FORWARD')
-    if problems:
-        p = box.row()
-        p.scale_y = 0.7
-        p.label(text="Fix: " + " · ".join(problems))
+            "missing": missing, "outside": outside, "xform": xform, "rig_state": rig_state}
 
 
 def draw_markers_tab(layout, context):
@@ -5104,7 +5094,6 @@ def draw_markers_tab(layout, context):
         _panel_cache["placed"] = sum(1 for n, *_ in ALL_MARKERS
                                      if f"MARKER_{n}" in bpy.data.objects)
         _panel_cache["onnx"]   = _ai.is_body_onnx_available()
-        _panel_cache["status"] = _compute_marker_status(context)
         _panel_cache["t"]      = now
 
     placed   = _panel_cache["placed"]
@@ -5112,10 +5101,6 @@ def draw_markers_tab(layout, context):
     total      = len(ALL_MARKERS)
     marker_col = get_marker_col()
     hidden     = bool(marker_col and marker_col.hide_viewport)
-
-    # ── Preflight / status (reads scene state, flags problems, suggests next step) ──
-    _draw_status_box(layout, context, placed, total)
-    layout.separator()
 
     # ── ① Body markers ────────────────────────────────────────────────────
     body_box = layout.box()
@@ -5140,25 +5125,6 @@ def draw_markers_tab(layout, context):
     if onnx_ok:
         body_col.operator("autorig.ai_detect_body", text="✦ EasyDetect Body", icon='SHADERFX')
     body_col.operator("autorig.auto_detect_body", text="① Auto Detect Body", icon='POSE_HLT')
-
-    layout.separator()
-
-    # ── Arm markers (manual / optional — arms are placed by Auto Detect Body) ──
-    arm_box  = layout.box()
-    sh_icon  = get_icon("Sh")
-    if sh_icon:
-        arm_box.label(text="Arm Markers  (optional)", icon_value=sh_icon)
-    else:
-        arm_box.label(text="Arm Markers  (optional)", icon='BONE_DATA')
-    arm_col = arm_box.column(align=True)
-    arm_col.scale_y = 1.2
-    hand_icon = get_icon("Hand")
-    if hand_icon:
-        arm_col.operator("autorig.place_arm_markers",
-                         text="   Place Arm Markers  (3 clicks)", icon_value=hand_icon)
-    else:
-        arm_col.operator("autorig.place_arm_markers",
-                         text="   Place Arm Markers  (3 clicks)", icon='BONE_DATA')
 
     layout.separator()
 
@@ -5507,6 +5473,15 @@ class AUTORIG_OT_CheckMarkers(bpy.types.Operator):
                         'WARNING',
                         f"{n1} and {n2} are {dist * 1000:.1f} mm apart — move them further apart."
                     ))
+
+        # ── 3. Markers outside the body mesh ───────────────────────────────
+        if body_col:
+            status = _compute_marker_status(context)
+            for name in status.get("outside") or []:
+                issues.append((
+                    'ERROR',
+                    f"MARKER_{name} is outside the mesh — re-run Auto Detect or drag it back onto the surface."
+                ))
 
         # ── Report ────────────────────────────────────────────────────────
         if not issues:

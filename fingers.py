@@ -3,15 +3,8 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
-from .constants import (
-    BILATERAL_MARKERS, ALL_MARKERS, FINGER_PREFIXES, FINGER_01_BONES,
-    FINGER_BASE_NAMES, FINGER_BONES_L, PALM_BONES_L,
-    FINGER_SIZE, ARM_SIZE, BODY_SIZE,
-)
-from .utils import (
-    get_icon, get_or_create_collection, get_marker_col,
-    _ensure_marker_empty, make_empty, get_base,
-)
+from .constants import FINGER_SIZE
+from .utils import get_or_create_collection
 
 _NAV_EVENTS = frozenset({
     'MOUSEMOVE',
@@ -33,24 +26,6 @@ def _bvh_from_mesh(mesh_obj):
     bvh = BVHTree.FromBMesh(bm)
     bm.free()
     return bvh
-
-def _interior_y_bvh(bvh, x, z, margin=2.0):
-    """Global-Y midpoint fallback — only valid for axis-aligned body parts in T-pose.
-    Returns None if no mesh surface is found at (x, z)."""
-    ray_o = Vector((x, -margin, z))
-    ray_d = Vector((0, 1, 0))
-    hit, _, _, _ = bvh.ray_cast(ray_o, ray_d)
-    if not hit:
-        return None
-    front_y = hit.y
-    last    = hit
-    for _ in range(200):
-        nxt, _, _, _ = bvh.ray_cast(last + Vector((0, 0.0001, 0)), ray_d)
-        if not nxt:
-            break
-        last = nxt
-    return front_y + (last.y - front_y) * 0.5
-
 
 def _interior_center_normal(bvh, surface_pt, inward_dir, max_dist=0.15):
     """Find the interior centreline of a mesh at a *surface* point.
@@ -358,120 +333,6 @@ class AUTORIG_OT_StraightenFingerMarkers(bpy.types.Operator):
                     moved += 1
         self.report({'INFO'}, f"Straightened {moved} intermediate markers.")
         return {'FINISHED'}
-
-
-class AUTORIG_OT_PlaceArmMarkers(bpy.types.Operator):
-    """Place all arm markers in 3 sequential clicks — no mesh selection needed.
-    Click 1 → Shoulder tip
-    Click 2 → Upper arm midpoint
-    Click 3 → Wrist  (Elbow is auto-derived as the ARM/HAND midpoint)
-    Both sides are mirrored automatically from the X position of each click."""
-    bl_idname  = "autorig.place_arm_markers"
-    bl_label   = "Place Arm Markers"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    _STEP_LABELS = [
-        "① Click SHOULDER tip",
-        "② Click UPPER ARM midpoint",
-        "③ Click WRIST  (Elbow auto-derived)",
-    ]
-    _STEP_NAMES = ["SHOULDER", "ARM", "HAND"]
-
-    # ── internal helpers ──────────────────────────────────────────────────────
-
-    def _header(self):
-        total = len(self._STEP_LABELS)
-        label = self._STEP_LABELS[self._step]
-        return f"Easy Rigify — {label}  ({self._step + 1}/{total})  |  ESC to cancel"
-
-    def _place_bilateral(self, marker_name, hit):
-        lx = abs(hit.x)
-        iy = _interior_y_bvh(self._bvh, lx, hit.z)
-        if iy is None:
-            iy = hit.y
-        for name, sx in [(f"{marker_name}_L", lx), (f"{marker_name}_R", -lx)]:
-            obj = _ensure_marker_empty(f"MARKER_{name}", ARM_SIZE)
-            obj.location = Vector((sx, iy, hit.z))
-            obj.hide_set(False)
-
-    def _derive_elbow(self):
-        """ELBOW = midpoint between ARM and HAND markers."""
-        for side in ('L', 'R'):
-            arm_mk  = bpy.data.objects.get(f"MARKER_ARM_{side}")
-            hand_mk = bpy.data.objects.get(f"MARKER_HAND_{side}")
-            if arm_mk and hand_mk:
-                elbow = _ensure_marker_empty(f"MARKER_ELBOW_{side}", ARM_SIZE)
-                elbow.location = (arm_mk.location + hand_mk.location) * 0.5
-                elbow.hide_set(False)
-
-    # ── modal ─────────────────────────────────────────────────────────────────
-
-    def cancel(self, context):
-        context.area.header_text_set(None)
-        self._bvh      = None
-        self._mesh_obj = None
-
-    def modal(self, context, event):
-        if getattr(self, '_cancel_next', False):
-            if event.type == 'Z' and event.ctrl:
-                return {'RUNNING_MODAL'}
-            context.area.header_text_set(None)
-            self._bvh      = None
-            self._mesh_obj = None
-            return {'CANCELLED'}
-
-        if event.type in _NAV_EVENTS:
-            return {'PASS_THROUGH'}
-
-        context.area.header_text_set(self._header())
-
-        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
-            hit, _ = _snap_to_surface(context, event, self._mesh_obj)
-            if hit is None:
-                return {'PASS_THROUGH'}
-
-            self._place_bilateral(self._STEP_NAMES[self._step], hit)
-            self._step += 1
-
-            if self._step >= len(self._STEP_NAMES):
-                self._derive_elbow()
-                context.area.header_text_set(None)
-                self._bvh      = None
-                self._mesh_obj = None
-                self.report({'INFO'},
-                    "Arm markers placed — Shoulder, Upper Arm, Wrist, Elbow (auto).")
-                return {'FINISHED'}
-
-            context.area.tag_redraw()
-            return {'RUNNING_MODAL'}
-
-        if event.type in {'RIGHTMOUSE', 'ESC'}:
-            context.area.header_text_set(None)
-            self._bvh      = None
-            self._mesh_obj = None
-            self.report({'INFO'},
-                f"Arm placement cancelled at step {self._step + 1}/3.")
-            return {'CANCELLED'}
-
-        if event.type == 'Z' and event.ctrl:
-            self._cancel_next = True
-            return {'RUNNING_MODAL'}
-
-        return {'RUNNING_MODAL'}
-
-    # ── invoke ────────────────────────────────────────────────────────────────
-
-    def invoke(self, context, event):
-        self._mesh_obj = _resolve_body_mesh(context)
-        if not self._mesh_obj:
-            self.report({'ERROR'},
-                "Set a Body Mesh in the panel, or select the character mesh first.")
-            return {'CANCELLED'}
-        self._bvh         = _bvh_from_mesh(self._mesh_obj)
-        self._step        = 0
-        self._cancel_next = False
-        context.window_manager.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

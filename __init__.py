@@ -19,7 +19,7 @@
 bl_info = {
     "name": "Easy Rigify",
     "author": "Dwayne Jones",
-    "version": (1, 1, 0),
+    "version": (1, 2, 0),
     "blender": (4, 2, 0),
     "location": "View3D > Sidebar > Easy Rigify",
     "description": "Place markers then auto-align a Rigify metarig",
@@ -86,7 +86,6 @@ from .ai_detect import (
 from .fingers import (
     AUTORIG_OT_PlaceFingerMarkers,
     AUTORIG_OT_StraightenFingerMarkers,
-    AUTORIG_OT_PlaceArmMarkers,
     AUTORIG_OT_DetectFingers,
     AUTORIG_PT_FingerPicker,
 )
@@ -254,7 +253,6 @@ CLASSES = (
     AUTORIG_OT_AutoDetectArms,
     AUTORIG_OT_PlaceFingerMarkers,
     AUTORIG_OT_StraightenFingerMarkers,
-    AUTORIG_OT_PlaceArmMarkers,
     AUTORIG_OT_DetectFingers,
     AUTORIG_OT_MirrorMarkers,
     AUTORIG_OT_CheckMarkers,

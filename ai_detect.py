@@ -940,13 +940,17 @@ def _fix_body_anatomy(mesh_obj, marker_pos, bvh=None, bounds=None):
             if th is not None:
                 marker_pos[f"THIGH_{side}"] = Vector((th.x, _pelv.y, _pelv.z))
 
-    # ── 6. Bilateral symmetry (always enforced) ───────────────────────────────
-    # Rigify metarigs are always symmetric, so L/R are unconditionally mirrored
-    # about the body centre X: lateral offset, depth (Y) and height (Z) are
-    # averaged, then X is mirrored from cx. This corrects any per-side detection
-    # error regardless of pose — the rig must be symmetric to generate correctly.
+    # ── 6. Bilateral symmetry (default ON, "Symmetrical Detect" toggle) ───────
+    # Rigify metarigs are symmetric, so L/R are mirrored about the body centre
+    # X: lateral offset, depth (Y) and height (Z) are averaged, then X is
+    # mirrored from cx. This corrects any per-side detection error regardless
+    # of pose. Toggle OFF (scene.autorig_detect_symmetry) keeps each side's raw
+    # detection — for deliberately asymmetric characters.
     _BILATERAL = ("SHOULDER", "ARM", "ELBOW", "HAND",
                   "THIGH", "SHIN", "FOOT", "HEEL", "TOES")
+    if not getattr(bpy.context.scene, "autorig_detect_symmetry", True):
+        _BILATERAL = ()
+        print("[symmetry] Symmetrical Detect OFF — keeping raw per-side body markers")
     for base in _BILATERAL:
         lv = marker_pos.get(f"{base}_L")
         rv = marker_pos.get(f"{base}_R")
@@ -2072,6 +2076,119 @@ def _auto_marker_scale(context, mesh_obj):
     _rescale_all_markers(scale)
 
 
+def _clip_rear_protrusions(mesh_obj):
+    """
+    Detect a large REAR protrusion (tail, rear wings/props — the character
+    faces -Y, so the back is +Y) and return a temporary mesh object with
+    everything behind the body clipped off, or None when the body has no
+    significant rear overhang (the normal-character fast path: nothing is
+    copied or modified).
+
+    Why: the body detector frames its ortho renders on the mesh bbox and
+    snaps markers to the mesh via BVH. A long tail inflates the side/top
+    framing (the body shrinks to a corner of the crop) and gives the spine
+    markers tail surface to snap onto — spine/chest/neck end up ON the tail.
+    Detecting on a body-only copy fixes framing, model input, BVH snapping,
+    and the geometric estimates all at once. Markers are placed in world
+    space, so no back-transform is needed.
+
+    Back-plane estimate: slice the character by height; each slice's max-Y is
+    where the BODY ends at that height for most slices — a tail is thin, so
+    it dominates only a few slices. The 75th percentile of slice max-Y is a
+    robust "back of body" even with legs bent backward. Feet are protected
+    explicitly: the clip plane never cuts behind the rear-most heel vertex
+    (bottom 15% of the height), so heel/toe markers keep their geometry.
+
+    Caller must remove the returned object + its mesh datablock.
+    """
+    import bmesh as _bm
+    from mathutils import Matrix
+
+    try:
+        dg = bpy.context.evaluated_depsgraph_get()
+        ev = mesh_obj.evaluated_get(dg)
+        mw = ev.matrix_world
+        verts = [mw @ v.co for v in ev.data.vertices]
+    except Exception as e:
+        print(f"[body-clip] mesh read failed ({e}) — skipping rear clip")
+        return None
+    if len(verts) < 100:
+        return None
+
+    zs = [v.z for v in verts]
+    z_lo, z_hi = min(zs), max(zs)
+    height = z_hi - z_lo
+    if height < 1e-4:
+        return None
+
+    n_slices = 40
+    slice_ymax = [None] * n_slices
+    for v in verts:
+        si = min(n_slices - 1, int((v.z - z_lo) / height * n_slices))
+        if slice_ymax[si] is None or v.y > slice_ymax[si]:
+            slice_ymax[si] = v.y
+
+    filled = sorted(y for y in slice_ymax if y is not None)
+    if len(filled) < 8:
+        return None
+    body_back = filled[int(len(filled) * 0.75)]          # P75 of slice max-Y
+    mx_y = filled[-1]
+
+    overhang = mx_y - body_back
+    if overhang <= 0.12 * height:
+        return None                                       # normal body — no clip
+
+    # Clip plane: a margin behind the body back, but NEVER in front of the
+    # rear-most foot/heel vertex (bottom 15% of the height) — feet stick out
+    # backward legitimately and their markers need that geometry.
+    heel_ymax = max((v.y for v in verts if v.z < z_lo + 0.15 * height),
+                    default=body_back)
+    clip_y = max(body_back + 0.04 * height, heel_ymax + 0.02 * height)
+    if mx_y - clip_y <= 0.08 * height:
+        return None            # the "protrusion" was mostly feet — leave alone
+    print(f"[body-clip] rear protrusion detected: overhang {overhang:.2f}m "
+          f"({overhang / height:.2f}x height) — clipping behind y={clip_y:.3f} "
+          f"and detecting on the body-only copy")
+
+    clip_data = bpy.data.meshes.new_from_object(ev, depsgraph=dg)
+    clip_obj = bpy.data.objects.new("_er_body_clipped", clip_data)
+    bpy.context.collection.objects.link(clip_obj)
+    clip_obj.matrix_world = Matrix.Identity(4)
+    clip_obj.color = mesh_obj.color
+
+    bm = _bm.new()
+    bm.from_mesh(clip_data)
+    bm.transform(mw)   # bake world transform (same pattern as _isolate_hand_mesh)
+    res = _bm.ops.bisect_plane(
+        bm,
+        geom=bm.verts[:] + bm.edges[:] + bm.faces[:],
+        dist=0.0001,
+        plane_co=Vector((0.0, clip_y, 0.0)),
+        plane_no=Vector((0.0, 1.0, 0.0)),
+        clear_outer=True,        # +Y side (behind the body) removed
+        clear_inner=False,
+    )
+    # Cap the cut so the stump is watertight (open loops read as holes in the
+    # ortho silhouettes and give BVH rays an interior to slip into).
+    try:
+        cut_edges = [e for e in res["geom_cut"] if isinstance(e, _bm.types.BMEdge)]
+        if cut_edges:
+            _bm.ops.holes_fill(bm, edges=cut_edges, sides=0)
+    except Exception as e:
+        print(f"[body-clip] stump cap skipped ({e})")
+
+    bm.to_mesh(clip_data)
+    bm.free()
+
+    if len(clip_data.vertices) < 100:
+        # Clip ate the mesh (bad estimate) — fail closed to the full mesh.
+        print("[body-clip] clip left too little geometry — using the full mesh")
+        bpy.data.objects.remove(clip_obj, do_unlink=True)
+        bpy.data.meshes.remove(clip_data, do_unlink=True)
+        return None
+    return clip_obj
+
+
 class AUTORIG_OT_AIDetectBody(bpy.types.Operator):
     """EasyDetect: place body markers automatically.
 Primary: bundled body pose model (models/body_pose.rmodel).
@@ -2108,6 +2225,21 @@ Fallback: geometric mesh estimate."""
         _auto_marker_scale(context, mesh_obj)
 
         with _normalized_detect_scale(mesh_obj):
+            # Characters with a tail / large rear props: detect on a temp copy
+            # with the rear protrusion clipped off, so the framing, the model
+            # input and the marker snapping only ever see the body. Fails
+            # closed: None for normal characters (zero behaviour change).
+            _clip_obj = _clip_rear_protrusions(mesh_obj)
+            if _clip_obj is not None:
+                _clip_data = _clip_obj.data
+                try:
+                    return self._detect_body(context, _clip_obj)
+                finally:
+                    try:
+                        bpy.data.objects.remove(_clip_obj, do_unlink=True)
+                        bpy.data.meshes.remove(_clip_data, do_unlink=True)
+                    except Exception:
+                        pass
             return self._detect_body(context, mesh_obj)
 
     def _detect_body(self, context, mesh_obj):
@@ -2506,6 +2638,7 @@ Fallback: geometric mesh estimate."""
                 _mp = marker_pos.get(_mid)
                 if _mp is not None:
                     marker_pos[_mid] = Vector((_scx, _mp.y, _mp.z))
+            _sym_on = getattr(context.scene, "autorig_detect_symmetry", True)
             for _b in ("SHOULDER", "ARM", "ELBOW", "HAND",
                        "THIGH", "SHIN", "FOOT", "HEEL", "TOES"):
                 _L = marker_pos.get(f"{_b}_L"); _R = marker_pos.get(f"{_b}_R")
@@ -2513,18 +2646,38 @@ Fallback: geometric mesh estimate."""
                     continue
                 _lu = f"{_b}_L" in undet_names
                 _ru = f"{_b}_R" in undet_names
+                # Mirror-FILL of an under-detected side stays even with the
+                # Symmetrical Detect toggle OFF (it is detection completion,
+                # not cosmetic symmetry — without it that side is garbage).
                 if _lu and not _ru:                       # mirror reliable R -> weak L
                     marker_pos[f"{_b}_L"] = Vector((2 * _scx - _R.x, _R.y, _R.z))
                 elif _ru and not _lu:                     # mirror reliable L -> weak R
                     marker_pos[f"{_b}_R"] = Vector((2 * _scx - _L.x, _L.y, _L.z))
-                else:                                     # both same status -> average
+                elif _sym_on:                             # both same status -> average
                     _off = (abs(_L.x - _scx) + abs(_R.x - _scx)) * 0.5
                     _ay  = (_L.y + _R.y) * 0.5
                     _az  = (_L.z + _R.z) * 0.5
                     _ls  = 1.0 if _L.x >= _scx else -1.0
                     marker_pos[f"{_b}_L"] = Vector((_scx + _ls * _off, _ay, _az))
                     marker_pos[f"{_b}_R"] = Vector((_scx - _ls * _off, _ay, _az))
-            print("[symmetry] L/R marker pairs mirrored/averaged; midline pinned to centre")
+            print("[symmetry] midline pinned to centre; L/R pairs "
+                  + ("mirrored/averaged" if _sym_on
+                     else "kept raw (Symmetrical Detect OFF; weak sides still mirror-filled)"))
+
+        # ── 2d. THIGH ↔ PELVIS level (Rigify requirement) ─────────────────────
+        # The Rigify metarig expects the thigh heads LEVEL with the pelvis head:
+        # same height (Z) and depth (Y), only X differs. _fix_body_anatomy step
+        # 5b anchors this, but LATER passes break it (the torso depth-centring
+        # moves PELVIS.y after 5b, and the geometric fallback path never anchors
+        # at all) — so re-assert it here as the last word before placement.
+        if marker_pos:
+            _pl_pelv = marker_pos.get("PELVIS")
+            if _pl_pelv is not None:
+                for _pl_s in ("L", "R"):
+                    _pl_th = marker_pos.get(f"THIGH_{_pl_s}")
+                    if _pl_th is not None:
+                        marker_pos[f"THIGH_{_pl_s}"] = Vector(
+                            (_pl_th.x, _pl_pelv.y, _pl_pelv.z))
 
         # ── 3. Place / move markers ───────────────────────────────────────────
         col      = get_or_create_collection("RigifyMarkers")
@@ -2890,7 +3043,8 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                     print(f"[geo] {dst} side failed -- mirrored {src} onto {dst}")
                     self.report({'WARNING'},
                                 f"Geometric engine: {dst} hand failed — mirrored the {src} hand.")
-                elif hw_l and hw_r and ok['L'] and ok['R']:
+                elif (hw_l and hw_r and ok['L'] and ok['R']
+                      and getattr(context.scene, "autorig_detect_symmetry", True)):
                     enforce_finger_symmetry(marker_pos, hw_l, hw_r)
                 for _gs in ('L', 'R'):
                     _ghw = hand_elbow.get(f"HAND_{_gs}")
@@ -2907,7 +3061,10 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                         separate_collapsed_tips(marker_pos, _ds_side, mesh_obj)
                 hw_l = hand_elbow.get("HAND_L")
                 hw_r = hand_elbow.get("HAND_R")
-                if hw_l and hw_r:
+                _sym_on = getattr(context.scene, "autorig_detect_symmetry", True)
+                if not _sym_on:
+                    print("[symmetry] Symmetrical Detect OFF — keeping raw per-side hands")
+                if hw_l and hw_r and _sym_on:
                     enforce_finger_symmetry(marker_pos, hw_l, hw_r)
                 # ── Post-ONNX finger cleanup passes ───────────────────────────
                 # Conservative, robust passes: tip-to-end, tip seated on the finger
@@ -3021,7 +3178,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                         else:
                             print(f"[takeover {_gs}] geometric engine declined "
                                   f"-- keeping neural result")
-                    if _geo_swapped:
+                    if _geo_swapped and _sym_on:
                         hw_l = hand_elbow.get("HAND_L")
                         hw_r = hand_elbow.get("HAND_R")
                         if hw_l and hw_r:
@@ -3032,10 +3189,11 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                 # (L thumb DIP floated while R sat inside), and Rigify wants
                 # exactly mirrored hands. Containment-based: the side that
                 # sits inside the mesh wins; equal sides are mirror-averaged.
+                # Skipped when Symmetrical Detect is OFF.
                 try:
                     hw_l = hand_elbow.get("HAND_L")
                     hw_r = hand_elbow.get("HAND_R")
-                    if hw_l and hw_r:
+                    if hw_l and hw_r and _sym_on:
                         from .ai_detect_lvt import enforce_final_symmetry
                         enforce_final_symmetry(marker_pos, mesh_obj, hw_l, hw_r)
                 except Exception as _fse:
@@ -3373,6 +3531,58 @@ def _face_eyebrow_geo_suspects(positions):
     return suspects
 
 
+def symmetrize_face_markers(context):
+    """Mirror-average the MARKER_FACE_* empties about the face midline so the
+    face comes out perfectly symmetric — the main asymmetry source is a detect
+    run without the eye meshes assigned (eye/lid/brow markers then come from
+    per-side estimates that disagree a few mm L/R).
+
+    Gated on scene.autorig_detect_symmetry (the shared "Symmetrical Detect"
+    toggle used by body/finger/face detects). Bilateral pairs are averaged and
+    mirrored; midline markers are pinned to the centreline. TEETH/TONGUE are
+    skipped — they're placed from their own meshes, and dragging them to the
+    face centreline could pull them off those meshes.
+
+    Returns the number of markers moved.
+    """
+    if not getattr(context.scene, "autorig_detect_symmetry", True):
+        print("[face-symmetry] Symmetrical Detect OFF — keeping raw face markers")
+        return 0
+    objs = {}
+    for o in bpy.data.objects:
+        if (o.name.startswith("MARKER_FACE_")
+                and "TEETH" not in o.name and "TONGUE" not in o.name):
+            objs[o.name] = o
+    pairs = []
+    for n, o in objs.items():
+        if n.endswith("_L"):
+            ro = objs.get(n[:-2] + "_R")
+            if ro is not None:
+                pairs.append((o, ro))
+    if not pairs:
+        return 0
+    # Face centreline = median of pair midpoints (robust to a few bad pairs;
+    # the bbox centre would be skewed by asymmetric hair/horns).
+    mids = sorted((o.location.x + ro.location.x) * 0.5 for o, ro in pairs)
+    cx = mids[len(mids) // 2]
+    moved = 0
+    for o, ro in pairs:
+        off = (abs(o.location.x - cx) + abs(ro.location.x - cx)) * 0.5
+        y = (o.location.y + ro.location.y) * 0.5
+        z = (o.location.z + ro.location.z) * 0.5
+        s = 1.0 if o.location.x >= cx else -1.0
+        o.location = (cx + s * off, y, z)
+        ro.location = (cx - s * off, y, z)
+        moved += 2
+    for n, o in objs.items():
+        if not (n.endswith("_L") or n.endswith("_R")):
+            o.location.x = cx
+            moved += 1
+    print(f"[face-symmetry] {moved} face markers symmetrized about x={cx:.4f} "
+          f"({len(pairs)} L/R pairs averaged; midline pinned)")
+    return moved
+
+
 class AUTORIG_OT_AIDetectFace(bpy.types.Operator):
     """EasyDetect: place the core face markers with the neural face model:
 render six ortho views, peak-detect the per-view heatmaps, triangulate to 3D and
@@ -3522,6 +3732,10 @@ snap to the mesh. Teeth/tongue are excluded (place those geometrically)."""
         if _geo_suspects:
             print(f"  [face-gate] {gated} eye/brow marker(s) handed to geometric; "
                   f"{gated - _rescued} re-placed, {_rescued} kept neural (geo also failed)")
+
+        # Symmetrical Detect: mirror-average the face L/R (mainly for detects
+        # run without the eye meshes, whose per-side estimates disagree).
+        symmetrize_face_markers(context)
 
         _gate_msg = (f" + {gated} eye/brow quality-gated to geometric" if gated else "")
         self.report({'INFO'},

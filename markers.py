@@ -3783,12 +3783,12 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                 if _src and _dst:
                     _p = _src.location.copy(); _p.x = -_p.x
                     _dst.location = _p
-        else:
+        elif getattr(context.scene, "autorig_detect_symmetry", True):
             # ── Symmetry: Rigify metarigs expect L/R-symmetric placement, but
             # per-side detection returns slightly different results (meshes are
             # rarely perfectly mirrored). Average every L/R pair about X=0 and
             # pin the midline markers to X=0 — same policy as the body detect's
-            # [symmetry] pass.
+            # [symmetry] pass. Gated on the shared "Symmetrical Detect" toggle.
             for _base, *_ in FACE_BILATERAL:
                 _l = bpy.data.objects.get(f"MARKER_{_base}_L")
                 _r = bpy.data.objects.get(f"MARKER_{_base}_R")
@@ -5130,6 +5130,10 @@ def draw_markers_tab(layout, context):
         mesh_row = body_box.row(align=True)
         mesh_row.prop(_bprops, "detect_body_obj", text="Body Mesh", icon='MESH_DATA')
 
+    # Shared symmetry toggle: one scene property, drawn beside every detect
+    # (body / fingers / face) so it can be flipped per run.
+    if hasattr(scene, "autorig_detect_symmetry"):
+        body_box.prop(scene, "autorig_detect_symmetry")
     body_col = body_box.column(align=True)
     body_col.scale_y = 1.2
     if onnx_ok:
@@ -5185,6 +5189,8 @@ def draw_markers_tab(layout, context):
         for _gp in ("geo_knuckle_depth", "geo_thumb_depth", "geo_min_finger"):
             if hasattr(scene, _gp):
                 fing_col.prop(scene, _gp)
+    if hasattr(scene, "autorig_detect_symmetry"):
+        fing_col.prop(scene, "autorig_detect_symmetry")
     btn_row = fing_col.row(align=True)
     btn_row.scale_y = 1.4
     _fing_btn_text = {'AUTO':      "✦ EasyDetect Fingers",
@@ -5280,6 +5286,9 @@ def draw_markers_tab(layout, context):
                     face_mc.prop(props, "brow_obj", text="Brow Mesh")
 
             fbox.separator()
+
+            if hasattr(scene, "autorig_detect_symmetry"):
+                fbox.prop(scene, "autorig_detect_symmetry")
 
             # ── EasyDetect Face (neural — shown once the face model is installed) ──
             if _ai.is_available() and _ai.is_face_onnx_available():

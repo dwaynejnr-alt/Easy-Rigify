@@ -416,6 +416,13 @@ def register():
         name="Live Symmetry", default=False,
         description="When you move a left/right marker, its mirror counterpart "
                     "follows automatically (across the character's symmetry plane)")
+    bpy.types.Scene.autorig_detect_symmetry = bpy.props.BoolProperty(
+        name="Symmetrical Detect", default=True,
+        description="Mirror-average left/right markers around the character's "
+                    "centreline after every detect (body, fingers, face) so both "
+                    "sides come out perfectly symmetric — what Rigify expects. "
+                    "Turn OFF for deliberately asymmetric characters to keep "
+                    "each side's raw detection")
     bpy.types.Scene.autorig_marker_scale = bpy.props.FloatProperty(
         name="Marker Scale", default=1.0, min=0.02, max=10.0, step=1,
         description="Scale multiplier for all marker empty sizes (auto-set by EasyDetect Body)",
@@ -612,6 +619,8 @@ def unregister():
         del bpy.types.Scene.autorig_show_hints
     if hasattr(bpy.types.Scene, 'autorig_live_symmetry'):
         del bpy.types.Scene.autorig_live_symmetry
+    if hasattr(bpy.types.Scene, 'autorig_detect_symmetry'):
+        del bpy.types.Scene.autorig_detect_symmetry
     if hasattr(bpy.types.Scene, 'autorig_marker_scale'):
         del bpy.types.Scene.autorig_marker_scale
     if hasattr(bpy.types.Scene, 'finger_center_radius'):

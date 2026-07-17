@@ -1,3 +1,4 @@
+﻿from .constants import dbg
 # finger_identity.py
 # -----------------------------------------------------------------------------
 # Shared, deterministic FINGER IDENTITY assignment.
@@ -131,7 +132,7 @@ def assign_finger_identity(items, arp_side, wrist, forward, tag=None):
     if _flen(rest[0]) < _flen(rest[-1]) * 0.88:
         rest.reverse()
         if tag:
-            print(f"{tag} row re-oriented: index end shorter than pinky end "
+            dbg(f"{tag} row re-oriented: index end shorter than pinky end "
                   f"({_flen(rest[-1])*1000:.0f}mm < {_flen(rest[0])*1000:.0f}mm)")
 
     named = {"thumb": items[best_i],
@@ -144,7 +145,7 @@ def assign_finger_identity(items, arp_side, wrist, forward, tag=None):
     named["_margin"] = margin
 
     if tag:
-        print(f"{tag} identity: thumb={items[best_i].get('ref')}  "
+        dbg(f"{tag} identity: thumb={items[best_i].get('ref')}  "
               f"score={best_score:.2f} margin={margin:.2f}  "
               f"(g={'yes' if have_g else 'no'})")
     return named

@@ -1,4 +1,4 @@
-# markers.py — Body/face marker placement, rig alignment, and UI panels for Easy Rigify.
+﻿# markers.py — Body/face marker placement, rig alignment, and UI panels for Easy Rigify.
 import bpy
 from bpy.app.handlers import persistent
 import math
@@ -17,6 +17,7 @@ except ImportError:
     _batch_for_shader = None
 
 from .constants import (
+    dbg,
     BODY_SIZE, ARM_SIZE, FINGER_SIZE, FACE_SIZE,
     TIP_EXTEND, FOOT_Y, HEEL_X, HEEL_Y,
     ARM_MARKER_BASES, FINGER_PREFIXES, FINGER_01_BONES, FINGER_BASE_NAMES,
@@ -1619,7 +1620,7 @@ class AUTORIG_OT_AutoDetectBody(bpy.types.Operator):
                         and p['width'] == min(
                             q['width'] for q in profile[max(0, _k - 6):_k + 7] if q)):
                     min_neck_z = p['z']
-                    print(f"[auto-body] adult neck window rejected -- pinch "
+                    dbg(f"[auto-body] adult neck window rejected -- pinch "
                           f"search: neck at "
                           f"{(min_neck_z - min_z) / height * 100:.0f}% of height")
                     break
@@ -1634,7 +1635,7 @@ class AUTORIG_OT_AutoDetectBody(bpy.types.Operator):
                 if abs((max_z - _eq['z']) - _eq['width'] * 0.5) < _eq['width'] * 0.35:
                     min_neck_z = max(_eq['z'] - _eq['width'] * 0.55,
                                      min_z + height * 0.25)
-                    print(f"[auto-body] head-ball fallback: neck at "
+                    dbg(f"[auto-body] head-ball fallback: neck at "
                           f"{(min_neck_z - min_z) / height * 100:.0f}% of height")
         if min_neck_z is None:
             neck_verts = regions["neck"]
@@ -2186,7 +2187,7 @@ def _face_detect_normalized(props):
         if o and getattr(o, "type", None) == 'MESH' and o not in objs:
             objs.append(o)
     orig = {o.name: o.matrix_world.copy() for o in objs}
-    print(f"[face-scale] mesh depth {depth:.3f}m (canonical {_CANON_DEPTH}m) -> "
+    dbg(f"[face-scale] mesh depth {depth:.3f}m (canonical {_CANON_DEPTH}m) -> "
           f"normalizing x{s:.3f} for detection")
 
     Sm = _about_c(s)
@@ -2427,15 +2428,15 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                                       tz + z_span * 0.25)
                         lip_b_z = max(min(_bb[0], seam_z - _sstep),
                                       bz - z_span * 0.25)
-                        print(f"[lips] crease seam z={seam_z:.4f} "
+                        dbg(f"[lips] crease seam z={seam_z:.4f} "
                               f"depth={_cdep*1000:.1f}mm -> lips at bulges "
                               f"t={lip_t_z:.4f} b={lip_b_z:.4f}")
                     else:
-                        print(f"[lips] no crease in window "
+                        dbg(f"[lips] no crease in window "
                               f"(best {_best_d*1000:.1f}mm vs need "
                               f"{z_span*0.08*1000:.1f}mm) -- band placement")
                 else:
-                    print(f"[lips] profile too sparse ({len(_profc)} pts) "
+                    dbg(f"[lips] profile too sparse ({len(_profc)} pts) "
                           f"-- band placement")
 
                 h = _fwd(0.0, lip_t_z)
@@ -2490,17 +2491,17 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                         _fold = _blprof[_gj]
                 if _fold is not None:
                     lip_bot_z = _fold[0]
-                    print(f"[lips] lower-lip crease at z={lip_bot_z:.4f} "
+                    dbg(f"[lips] lower-lip crease at z={lip_bot_z:.4f} "
                           f"-> LIP_BOT")
                 else:
-                    print(f"[lips] no lower-lip fold found "
+                    dbg(f"[lips] no lower-lip fold found "
                           f"({len(_blprof)} pts scanned) -- LIP_BOT at offset")
                 # Hard clamp (insurance for the offset default too): never more
                 # than _bot_cap below the lower lip.
                 _bot_floor = lip_b_z - _bot_cap
                 if lip_bot_z < _bot_floor:
                     lip_bot_z = _bot_floor
-                    print(f"[lips] LIP_BOT capped at {_bot_cap*1000:.0f}mm "
+                    dbg(f"[lips] LIP_BOT capped at {_bot_cap*1000:.0f}mm "
                           f"below the lower lip (was reaching the jaw)")
                 h = _fwd(0.0, lip_bot_z)
                 if h:
@@ -2559,11 +2560,11 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                                          sum(v.y for v in col) / len(col),
                                          _corner_z))
                         if base and ext < base * 0.62:     # lips converged -> corner
-                            print(f"[lips] corner shell converged at "
+                            dbg(f"[lips] corner shell converged at "
                                   f"x={xc*1000:+.0f}mm (i={i}, base ext "
                                   f"{base*1000:.1f}mm -> {ext*1000:.1f}mm)")
                             return corner
-                    print(f"[lips] corner shell walk did not converge "
+                    dbg(f"[lips] corner shell walk did not converge "
                           f"({why}) -> IOD fallback")
                     return None
 
@@ -2623,7 +2624,7 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                         else:
                             fade += 1
                             if fade >= 2 and last is not None:
-                                print(f"[lips] corner crease-end at "
+                                dbg(f"[lips] corner crease-end at "
                                       f"x={last.x*1000:+.0f}mm (centre depth "
                                       f"{d0*1000:.1f}mm)")
                                 return last
@@ -2643,7 +2644,7 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                         # Crease converged into an implausibly narrow mouth
                         # (near-noise crease). Skip the shell walk — it fades on
                         # the CHEEK on these shallow lips (too WIDE) — go to IOD.
-                        print(f"[lips] crease corner {side} too narrow "
+                        dbg(f"[lips] crease corner {side} too narrow "
                               f"({abs(corner_pos.x)*1000:.0f}mm < "
                               f"{_mouth_min_half*1000:.0f}mm floor) -- IOD")
                         corner_pos = None
@@ -2664,7 +2665,7 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                                 _hc = _fwd(x_sign * _iodx * 0.5, _corner_z)
                                 if _hc is not None:
                                     corner_pos = _hc.copy()
-                                    print(f"[lips] corner {side} from IOD "
+                                    dbg(f"[lips] corner {side} from IOD "
                                           f"proportion (x={_iodx*0.5*1000:+.0f}mm)")
                     if corner_pos:
                         if self._snap(f'FACE_MOUTH_CORNER_{side}', corner_pos): moved += 1
@@ -2821,7 +2822,7 @@ class AUTORIG_OT_DetectFaceObjects(bpy.types.Operator):
                         _wx = x_sign * _wing_cap
                         _wh = _fwd(_wx, _wing_z)
                         w = Vector((_wx, _wh.y if _wh else w.y, _wing_z))
-                        print(f"[nose] WING_{side} capped at {_wing_cap*1000:.0f}mm "
+                        dbg(f"[nose] WING_{side} capped at {_wing_cap*1000:.0f}mm "
                               f"from centre (was reaching the face side)")
                     if w:
                         if self._snap(f'FACE_NOSE_WING_{side}', w): moved += 1
@@ -3963,7 +3964,7 @@ class AUTORIG_OT_AlignRig(bpy.types.Operator):
         if (any(abs(a) > 1e-4 for a in _mw_e)
                 or any(abs(s - 1.0) > 1e-4 for s in _mw_s)):
             import math as _math
-            print(f"[align] armature '{arm_obj.name}' has a non-identity "
+            dbg(f"[align] armature '{arm_obj.name}' has a non-identity "
                   f"transform: rot=("
                   f"{_math.degrees(_mw_e.x):.1f}, {_math.degrees(_mw_e.y):.1f}, "
                   f"{_math.degrees(_mw_e.z):.1f})°  scale=({_mw_s.x:.3f}, "
@@ -4000,7 +4001,7 @@ class AUTORIG_OT_AlignRig(bpy.types.Operator):
         _mirror_x_prev = arm_obj.data.use_mirror_x
         if _mirror_x_prev:
             arm_obj.data.use_mirror_x = False
-            print("[align] X-Axis Mirror was ON — disabled during alignment "
+            dbg("[align] X-Axis Mirror was ON — disabled during alignment "
                   "(restored after)")
 
         self._align_body(ebs, mpos, arm_obj.matrix_world.to_3x3())
@@ -4311,7 +4312,7 @@ class AUTORIG_OT_AlignRig(bpy.types.Operator):
                             fing_roll_vec = _tgt
                         else:
                             # anomaly-only: guard rejected the palm normal
-                            print(f"[align{b_suf}] palm normal {math.degrees(_dev):.0f}° "
+                            dbg(f"[align{b_suf}] palm normal {math.degrees(_dev):.0f}° "
                                   f"off global X -- keeping shipped axis")
             _side_roll[b_suf] = fing_roll_vec
             _missing_fb = []
@@ -4342,7 +4343,7 @@ class AUTORIG_OT_AlignRig(bpy.types.Operator):
                     # touched the bone at all.
                     _missing_fb.append(actual_bone)
             if _missing_fb:
-                print(f"[align{b_suf}] finger bones NOT FOUND (roll untouched): "
+                dbg(f"[align{b_suf}] finger bones NOT FOUND (roll untouched): "
                       f"{', '.join(_missing_fb)}")
 
         # ── FINGER ROLL MIRROR (.R → .L) ──────────────────────────────────

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Geometric (no-ML) finger detection — geodesic-tube engine.
 
 Works purely from the mesh: no renders, no onnxruntime. Selected via the
@@ -27,6 +27,7 @@ caller can fall back instead of guessing.
 """
 
 import bpy
+from .constants import dbg
 import heapq
 import numpy as np
 from mathutils import Vector
@@ -233,7 +234,7 @@ def _drop_overlapping(tubes, arp_side):
         if dup is None:
             kept.append(t)
         else:
-            print(f"[geo {arp_side}] dropped {t['arc']*1000:.0f}mm tube riding "
+            dbg(f"[geo {arp_side}] dropped {t['arc']*1000:.0f}mm tube riding "
                   f"the {dup['arc']*1000:.0f}mm tube's volume")
     return kept
 
@@ -478,7 +479,7 @@ def body_extremities_geodesic(mesh_obj, max_verts=12000):
             if hands:
                 break
         if hands is None or float(co[feet[0]][0] - cx) * float(co[feet[1]][0] - cx) > 0:
-            print("[body-geo] extremities unclassifiable -- template keeps arms")
+            dbg("[body-geo] extremities unclassifiable -- template keeps arms")
             return None
 
         def _lr(pair):
@@ -565,13 +566,13 @@ def body_extremities_geodesic(mesh_obj, max_verts=12000):
                 out[f"shoulder_{side}"] = sh
             if a is not None:
                 out[f"ankle_{side}"] = a
-        print(f"[body-geo] extremities: head z={out['head'].z:.2f}  "
+        dbg(f"[body-geo] extremities: head z={out['head'].z:.2f}  "
               f"hands=({out['hand_l'].x:.2f},{out['hand_r'].x:.2f})  "
               f"wrists={'yes' if 'wrist_l' in out and 'wrist_r' in out else 'partial'}  "
               f"shoulders={'yes' if 'shoulder_l' in out and 'shoulder_r' in out else 'no'}")
         return out
     except Exception as e:
-        print(f"[body-geo] failed: {e}")
+        dbg(f"[body-geo] failed: {e}")
         return None
     finally:
         if ob is not None:
@@ -633,7 +634,7 @@ def estimate_hand_tip_geodesic(mesh_obj, hw, ew, arp_side):
             # Isolation kept a FRAGMENT (unwelded hand: a 318-vert wrist stub
             # was seen) — a geodesic estimate on a stub lands anywhere.
             # Fall back to the caller's projection estimate.
-            print(f"[geo-tip {arp_side}] isolation fragment "
+            dbg(f"[geo-tip {arp_side}] isolation fragment "
                   f"(extent {extent*1000:.0f}mm vs arm {arm_len*1000:.0f}mm) "
                   f"-- falling back")
             return None
@@ -675,7 +676,7 @@ def estimate_hand_tip_geodesic(mesh_obj, hw, ew, arp_side):
                     p = apex.mean(axis=0)
         return Vector((float(p[0]), float(p[1]), float(p[2])))
     except Exception as _e:
-        print(f"[geo-tip {arp_side}] geodesic hand-tip estimate failed: {_e}")
+        dbg(f"[geo-tip {arp_side}] geodesic hand-tip estimate failed: {_e}")
         return None
     finally:
         if iso is not None:
@@ -755,7 +756,7 @@ def detect_fingers_geo(mesh_obj, hw, ew, arp_side,
         if result:
             return result
         if not do_bridge:
-            print(f"[geo {arp_side}] island pass failed -- retrying with "
+            dbg(f"[geo {arp_side}] island pass failed -- retrying with "
                   f"piece-bridging (separate-geometry hand?)")
     return None
 
@@ -767,7 +768,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
     me = iso.data
     n = len(me.vertices)
     if n < 50 or len(me.edges) < 50:
-        print(f"[geo {arp_side}] isolated island too small ({n} verts) -- abort")
+        dbg(f"[geo {arp_side}] isolated island too small ({n} verts) -- abort")
         return None
 
     co = np.empty(n * 3, dtype=np.float64)
@@ -839,7 +840,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
                     still.append(c)
             others = still
         if n_bridge:
-            print(f"[geo {arp_side}] bridged {n_bridge} separate piece(s) "
+            dbg(f"[geo {arp_side}] bridged {n_bridge} separate piece(s) "
                   f"into the hand ({len(main)}/{n} verts reachable)")
 
     # -- Seed SLAB at the proximal end -------------------------------------
@@ -880,7 +881,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
     g_wrist = (float(np.median(gv[in_ball])) if in_ball.any()
                else float(gv[int(np.argmin(d2w))]))
     hand_ref = min(max(g_max - g_wrist, 0.45 * g_max), g_max)
-    print(f"[geo {arp_side}] island {n} verts, seeds {len(seeds)}, "
+    dbg(f"[geo {arp_side}] island {n} verts, seeds {len(seeds)}, "
           f"g_max {g_max*1000:.0f}mm, hand_ref {hand_ref*1000:.0f}mm")
 
     # -- Tube stage (candidates -> tubes -> selection), scale-parameterized --
@@ -946,7 +947,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
             low_cands.append(v)
             suppressed |= _dijkstra(adj, [v], cap=r_nms).keys()
         if low_cands:
-            print(f"[geo {arp_side}] {len(low_cands)} low-reach thumb candidate(s) "
+            dbg(f"[geo {arp_side}] {len(low_cands)} low-reach thumb candidate(s) "
                   f"(g {', '.join(f'{g[v]*1000:.0f}mm' for v in low_cands)}; "
                   f"floor {floor*1000:.0f} -> {low_floor*1000:.0f}mm)")
         low_set = set(low_cands)
@@ -966,11 +967,11 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
                 # straight middle finger replaced by a knuckle bump). Keep the
                 # position: the rebuild rescue snaps a rebuilt tip onto it.
                 lost_tips.append(co[v].copy())
-                print(f"[geo {arp_side}] WARNING: top tip candidate "
+                dbg(f"[geo {arp_side}] WARNING: top tip candidate "
                       f"(g={g[v]*1000:.0f}mm) has no valid tube -- "
                       f"a finger may be missing from this hand")
         _arcs = ", ".join(f"{t['arc']*1000:.0f}mm" for t in tubes)
-        print(f"[geo {arp_side}] {len(cands)} tip candidates -> "
+        dbg(f"[geo {arp_side}] {len(cands)} tip candidates -> "
               f"{len(tubes)} validated tubes ({_arcs})")
         # Drop FOLDED tubes: a valid finger runs roughly straight from tip to
         # palm, so its arc ~ its tip->base span. A mis-traced tube can LOOP
@@ -1001,7 +1002,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
                     _fa = ", ".join(f"{t2['arc']*1000:.0f}mm(s={_sr[id(t2)]:.2f})"
                                     for t2 in folded)
                     tubes = [t for t in tubes if id(t) not in _fids]
-                    print(f"[geo {arp_side}] dropped {len(folded)} FOLDED tube(s) "
+                    dbg(f"[geo {arp_side}] dropped {len(folded)} FOLDED tube(s) "
                           f"({_fa}) -- arc >> tip->base span, mis-traced not a finger")
         # Drop imposter tubes far shorter than the hand's own fingers (knuckle
         # bumps / folds validate as tiny tubes with a HIGH tip g, and
@@ -1022,7 +1023,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
                 _sids = {id(t) for t in short}
                 _short_arcs = ", ".join(f"{t2['arc']*1000:.0f}mm" for t2 in short)
                 tubes = [t for t in tubes if id(t) not in _sids]
-                print(f"[geo {arp_side}] dropped {len(short)} imposter tube(s) "
+                dbg(f"[geo {arp_side}] dropped {len(short)} imposter tube(s) "
                       f"({_short_arcs}) vs reference {ref*1000:.0f}mm")
         # Bump tubes riding a real finger's volume masquerade as fingers (and
         # as thumbs) -- drop them before choosing the five. If the dedup was
@@ -1033,11 +1034,11 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
         tubes_all = list(tubes)
         tubes = _drop_overlapping(tubes, arp_side)
         if len(tubes) < 5 <= len(tubes_all):
-            print(f"[geo {arp_side}] dedup left {len(tubes)} -- retrying "
+            dbg(f"[geo {arp_side}] dedup left {len(tubes)} -- retrying "
                   f"structure search on all {len(tubes_all)} tubes")
             tubes = tubes_all
         if len(tubes) < 5:
-            print(f"[geo {arp_side}] fewer than 5 finger tubes -- giving up")
+            dbg(f"[geo {arp_side}] fewer than 5 finger tubes -- giving up")
             return None
 
         # -- Select the 5 tubes + assign identity ---------------------------
@@ -1058,7 +1059,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
             # the thumb base, chain in the palm). Multiple sets let identity
             # + plausibility + the low-reach tier decide, same as the
             # structured path.
-            print(f"[geo {arp_side}] no 5-tube combo passes hand-structure "
+            dbg(f"[geo {arp_side}] no 5-tube combo passes hand-structure "
                   f"checks -- falling back to reach + proximal thumb")
             fell_back = True
             _byg = sorted(tubes, key=lambda t: t["g"], reverse=True)
@@ -1091,7 +1092,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
             if best is None or (tier, pl) > (best[0], best[1]):
                 best = (tier, pl, ident, five)
         if best is None:
-            print(f"[geo {arp_side}] identity assignment failed -- "
+            dbg(f"[geo {arp_side}] identity assignment failed -- "
                   f"rejecting this pass")
             return None
         return best + (fell_back, lost_tips, tubes_all)
@@ -1112,7 +1113,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
     _weak = (stage is not None and stage[4]
              and stage[2].get("_margin", 1e9) < 0.8)
     if stage is None or stage[0] == 0 or _weak:
-        print(f"[geo {arp_side}] "
+        dbg(f"[geo {arp_side}] "
               + ("no usable hand" if stage is None else
                  "thumb only via low-reach rescue" if stage[0] == 0 else
                  f"ambiguous fallback (identity margin "
@@ -1121,21 +1122,21 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
               f"({1.75 * hand_ref * 1000:.0f}mm)")
         retry = _tube_stage(1.75 * hand_ref)
         if retry is not None and not retry[4] and retry[0] == 1:
-            print(f"[geo {arp_side}] x1.75 retry found a structured hand with "
+            dbg(f"[geo {arp_side}] x1.75 retry found a structured hand with "
                   f"a normally-reachable thumb -- using it")
             stage = retry
         elif stage is None and retry is not None:
-            print(f"[geo {arp_side}] using x1.75 retry result "
+            dbg(f"[geo {arp_side}] using x1.75 retry result "
                   f"(native scale had none)")
             stage = retry
         elif stage is not None:
-            print(f"[geo {arp_side}] x1.75 retry not better -- "
+            dbg(f"[geo {arp_side}] x1.75 retry not better -- "
                   f"keeping native-scale result")
     if stage is None:
         return None
     _tier, _plaus, _ident, _five, _fell_back, lost_tips, tubes_all = stage
     if _tier == 0:
-        print(f"[geo {arp_side}] thumb from LOW-REACH rescue candidate "
+        dbg(f"[geo {arp_side}] thumb from LOW-REACH rescue candidate "
               f"(no set with a normally-reachable thumb passed)")
     # Re-run identity on the WINNING set with a tag so the thumb score/margin
     # diagnostic prints (it was lost when selection went multi-set; pure
@@ -1148,9 +1149,9 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
     named = {f: _ident[f]["ref"] for f in ("thumb", "index", "middle", "ring", "pinky")}
     _four = ("index", "middle", "ring", "pinky")
     if max(_four, key=lambda f: named[f]["arc"]) != "middle":
-        print(f"[geo {arp_side}] note: middle is not the longest tube "
+        dbg(f"[geo {arp_side}] note: middle is not the longest tube "
               f"(soft check - identity kept from structure, not length)")
-    print(f"[geo {arp_side}] plausibility={_plaus:.2f}  "
+    dbg(f"[geo {arp_side}] plausibility={_plaus:.2f}  "
           + "  ".join(f"{f}={named[f]['arc']*1000:.0f}mm" for f in
                       ("thumb", "index", "middle", "ring", "pinky")))
 
@@ -1172,7 +1173,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
     med4 = float(np.median(arcs4))
     n_off = sum(1 for a in arcs4 if a < 0.42 * med4 or a > 1.9 * med4)
     if n_off >= 2:
-        print(f"[geo {arp_side}] implausible finger pattern "
+        dbg(f"[geo {arp_side}] implausible finger pattern "
               f"({n_off}/4 lengths far off the median) -- rejecting this pass")
         return None
     # The bridge pass runs on exotic layered/separate geometry where a
@@ -1180,7 +1181,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
     # pinky on the thumb). Only accept a canonical-looking hand from it;
     # anything else is better handled by the neural engine.
     if do_bridge and named["middle"]["arc"] < 0.95 * max(arcs4):
-        print(f"[geo {arp_side}] bridge-pass result not canonical "
+        dbg(f"[geo {arp_side}] bridge-pass result not canonical "
               f"(middle is not the longest finger) -- rejecting")
         return None
 
@@ -1256,7 +1257,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
         if _arc > 1e-6 and _chain < 0.60 * _arc:
             _cause = "tube folds back" if _straight < 0.55 * _arc else "placement lost tip"
             _flag = f"  <-- TIP SHORT (chain {_chain*1000:.0f} << arc {_arc*1000:.0f}; {_cause})"
-        print(f"  [geo-diag {arp_side}] {_f}: arc={_arc*1000:.0f}mm  "
+        dbg(f"  [geo-diag {arp_side}] {_f}: arc={_arc*1000:.0f}mm  "
               f"straight={_straight*1000:.0f}mm  chain={_chain*1000:.0f}mm{_flag}")
 
     # Knuckle-row anchor: the four finger MCPs sit on the metacarpal-head
@@ -1322,7 +1323,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
             tip_v = result[tip_k]
             result[f"{arp['phal3']}_{arp_side}"] = tip_v.lerp(mcp_v, 0.23)
             result[f"{arp['phal2']}_{arp_side}"] = tip_v.lerp(mcp_v, 0.52)
-            print(f"[geo {arp_side}] {f} tube bogus "
+            dbg(f"[geo {arp_side}] {f} tube bogus "
                   f"({named[f]['arc']*1000:.0f}mm vs median {med4*1000:.0f}mm) "
                   f"-- chain rebuilt from neighbours, tip from {src}")
             continue
@@ -1336,7 +1337,7 @@ def _detect_from_iso(iso, hw_v, arm_dir, arm_len, arp_side, do_bridge,
         mcp_v = result[k]
         result[f"{arp['phal3']}_{arp_side}"] = tip_v.lerp(mcp_v, 0.23)
         result[f"{arp['phal2']}_{arp_side}"] = tip_v.lerp(mcp_v, 0.52)
-        print(f"[geo {arp_side}] {f} tube short "
+        dbg(f"[geo {arp_side}] {f} tube short "
               f"({named[f]['arc']*1000:.0f}mm vs median {med4*1000:.0f}mm) "
               f"-- MCP rescued onto the knuckle row")
     return result

@@ -1,4 +1,4 @@
-# ai_detect.py — AI-powered marker detection for Easy Rigify.
+﻿# ai_detect.py — AI-powered marker detection for Easy Rigify.
 # Body/fingers: encrypted ONNX (models/body_pose.rmodel) + BVH geometry.
 # Face: not supported (MediaPipe removed).
 
@@ -13,6 +13,7 @@ import numpy as np
 from mathutils import Vector, Matrix
 
 from .constants import ALL_MARKERS, BODY_SIZE, FINGER_SIZE, FACE_SIZE, CORE_FACE_LANDMARKS, FULL_FACE_LANDMARKS
+from .constants import dbg
 from .utils import get_or_create_collection, make_empty, _mesh_bbox_world
 
 
@@ -56,7 +57,7 @@ def _scene_mesh_or_none(context, obj):
     if obj is None or obj.type != 'MESH':
         return None
     if obj.name not in context.scene.objects:
-        print(f"[detect] Body Mesh picker points to '{obj.name}' which is not "
+        dbg(f"[detect] Body Mesh picker points to '{obj.name}' which is not "
               f"in this scene — ignoring it")
         return None
     return obj
@@ -210,7 +211,7 @@ def _estimate_body_from_mesh(obj):
                     best_k = k
         if best_k is not None:
             neck_z = _zc[best_k]
-            print(f"[body-est] neck at z={neck_z:.3f} "
+            dbg(f"[body-est] neck at z={neck_z:.3f} "
                   f"({(neck_z - mn.z) / h * 100:.0f}% of height) "
                   f"-- proportions neck-anchored")
         else:
@@ -227,12 +228,12 @@ def _estimate_body_from_mesh(obj):
                 if (frac_eq >= 0.45
                         and abs(_crown_gap - w_eq * 0.5) < w_eq * 0.35):
                     neck_z = max(_zc[k_eq] - w_eq * 0.55, mn.z + h * 0.25)
-                    print(f"[body-est] no neck pinch -- head-ball fallback: "
+                    dbg(f"[body-est] no neck pinch -- head-ball fallback: "
                           f"equator z={_zc[k_eq]:.3f} width={w_eq:.3f} -> "
                           f"neck at z={neck_z:.3f} "
                           f"({(neck_z - mn.z) / h * 100:.0f}% of height)")
     except Exception as _e:
-        print(f"[body-est] neck scan skipped ({_e})")
+        dbg(f"[body-est] neck scan skipped ({_e})")
 
     if neck_z is not None:
         _bh    = max(neck_z - mn.z, h * 0.2)     # ground -> neck
@@ -288,7 +289,7 @@ def _estimate_body_from_mesh(obj):
         from .ai_detect_geo import body_extremities_geodesic
         _geo = body_extremities_geodesic(obj)
     except Exception as _e:
-        print(f"[body-geo] unavailable: {_e}")
+        dbg(f"[body-geo] unavailable: {_e}")
         _geo = None
     if _geo:
         _map = {
@@ -311,7 +312,7 @@ def _estimate_body_from_mesh(obj):
                     continue
                 out[mp_name] = _geo[gk].copy()
                 _n_up += 1
-        print(f"[body-geo] {_n_up} landmarks from geodesic extremities")
+        dbg(f"[body-geo] {_n_up} landmarks from geodesic extremities")
 
     # The DETECTED neck (when found) is authoritative for the NECK marker:
     # the default derivation lerps the shoulder midpoint 25% toward the EARS,
@@ -622,7 +623,7 @@ def _fix_body_anatomy(mesh_obj, marker_pos, bvh=None, bounds=None):
     anchor · 6 symmetry · 7 elbow/hand Y-center.
     Character assumed to face -Y (Rigify standard): heel at +Y back, toes at -Y front.
     """
-    print("[Anatomy] _fix_body_anatomy v5 running (single consolidated pass)")
+    dbg("[Anatomy] _fix_body_anatomy v5 running (single consolidated pass)")
     _mn, _mx, cen = _mesh_bbox_world(mesh_obj)
     cx = cen.x
 
@@ -686,7 +687,7 @@ def _fix_body_anatomy(mesh_obj, marker_pos, bvh=None, bounds=None):
             continue
         if abs(_sh0.x - cx) > abs(_sg_hit.x - cx) - _s0_inset:
             _new_x = _sg_hit.x - _s0_sign * _s0_inset
-            print(f"[Anatomy] {_sh0_key}: outside mesh, inset "
+            dbg(f"[Anatomy] {_sh0_key}: outside mesh, inset "
                   f"{abs(_sh0.x - cx)*100:.1f}cm → {abs(_new_x - cx)*100:.1f}cm")
             marker_pos[_sh0_key] = Vector((_new_x, _sh0.y, _sh0.z))
 
@@ -766,7 +767,7 @@ def _fix_body_anatomy(mesh_obj, marker_pos, bvh=None, bounds=None):
         _arm_angle_deg = math.degrees(
             math.atan2(_upper.z, math.sqrt(_upper.x ** 2 + _upper.y ** 2))
         )
-        print(f"[Anatomy] SHOULDER_{side} arm angle: {_arm_angle_deg:.1f}°")
+        dbg(f"[Anatomy] SHOULDER_{side} arm angle: {_arm_angle_deg:.1f}°")
 
     # ── 3. SHIN: midpoint of THIGH–FOOT axis, Y-centered inside the mesh ─────────
     # The knee sits at the exact midpoint between the thigh and ankle.
@@ -950,7 +951,7 @@ def _fix_body_anatomy(mesh_obj, marker_pos, bvh=None, bounds=None):
                   "THIGH", "SHIN", "FOOT", "HEEL", "TOES")
     if not getattr(bpy.context.scene, "autorig_detect_symmetry", True):
         _BILATERAL = ()
-        print("[symmetry] Symmetrical Detect OFF — keeping raw per-side body markers")
+        dbg("[symmetry] Symmetrical Detect OFF — keeping raw per-side body markers")
     for base in _BILATERAL:
         lv = marker_pos.get(f"{base}_L")
         rv = marker_pos.get(f"{base}_R")
@@ -1113,7 +1114,7 @@ def _detect_body_onnx(front_path, side_path, top_path, bounds, bvh):
             zs = ([wz_f] if af > ACT_LO else []) + ([wz_s] if as_ > ACT_LO else [])
             if xs and zs:
                 undet[i] = False
-                print(f"  [ONNX-v2] {_BODY_MARKERS[i]} rescued at low gate "
+                dbg(f"  [ONNX-v2] {_BODY_MARKERS[i]} rescued at low gate "
                       f"(front={af:.2f} side={as_:.2f} top={at:.2f})")
 
         lm[i, 0] = sum(xs) / len(xs) if xs else cx
@@ -1174,7 +1175,7 @@ def _detect_body_onnx(front_path, side_path, top_path, bounds, bvh):
         _zs = [p.z for p in marker_pos.values()]
         _bw = max(bounds.get("ortho_scale", 1.0), 1e-6)
         if (max(_xs) - min(_xs)) / _bw < 0.20 or (max(_zs) - min(_zs)) / _bw < 0.35:
-            print(f"[ONNX-v2] WARNING low spread: X={max(_xs)-min(_xs):.2f}m "
+            dbg(f"[ONNX-v2] WARNING low spread: X={max(_xs)-min(_xs):.2f}m "
                   f"Z={max(_zs)-min(_zs):.2f}m  (frame {_bw:.2f}m) "
                   f"-- detection may have collapsed")
 
@@ -1187,10 +1188,10 @@ def _detect_body_onnx(front_path, side_path, top_path, bounds, bvh):
         # grafted onto the torso on extreme proportions (Hulk-like).
         for i, name in enumerate(_BODY_MARKERS):
             if undet[i]:
-                print(f"  [ONNX-v2] {name:12s} peaks: front={float(hm_f[i].max()):.2f} "
+                dbg(f"  [ONNX-v2] {name:12s} peaks: front={float(hm_f[i].max()):.2f} "
                       f"side={float(hm_s[i].max()):.2f} top={float(hm_t[i].max()):.2f} "
                       f"(gate {ACT})")
-    print(f"[ONNX-v2] {len(marker_pos)}/{len(_BODY_MARKERS)} raw landmarks via heatmap triangulation"
+    dbg(f"[ONNX-v2] {len(marker_pos)}/{len(_BODY_MARKERS)} raw landmarks via heatmap triangulation"
           + (f"  ({_n_undet} undetected -> geometric graft: "
              + ", ".join(sorted(undet_names)) + ")"
              if _n_undet else ""))
@@ -1472,7 +1473,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
             _mext = _mesh_hand_extent(mesh_obj, _hw, _fwd / _hlen,
                                       radius=max(0.50, _hlen * 1.5))
             if _mext is not None and _mext > 0.03 and _hlen > 2.5 * _mext:
-                print(f"  [orbit] HAND_TIP marker looks misplaced: "
+                dbg(f"  [orbit] HAND_TIP marker looks misplaced: "
                       f"{_hlen*1000:.0f}mm vs mesh ~{_mext*1000:.0f}mm — using geometry")
                 tip = None
         if tip is not None and _hlen > 0.05:
@@ -1480,7 +1481,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
             hand_scale = _hlen * 1.0
             cen        = _hw + _fwd * 0.6
             dist       = hand_scale * 1.5
-            print(f"  [orbit] tip-marker  hand_length={_hlen*1000:.0f}mm  scale={hand_scale:.3f}m")
+            dbg(f"  [orbit] tip-marker  hand_length={_hlen*1000:.0f}mm  scale={hand_scale:.3f}m")
             # Rebuild ref/perp with the corrected fwd direction
             world_up = Vector((0.0, 0.0, 1.0)) if abs(fwd.z) < 0.9 else Vector((1.0, 0.0, 0.0))
             ref  = (world_up - fwd * fwd.dot(world_up)).normalized()
@@ -1502,7 +1503,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
                     hand_scale = _hlen * 1.1
                     cen        = _hw + _fwd * (_min_p + _max_p) * 0.5
                     dist       = hand_scale * 1.5
-                    print(f"  [orbit] geometry    hand_length={_hlen*1000:.0f}mm  scale={hand_scale:.3f}m")
+                    dbg(f"  [orbit] geometry    hand_length={_hlen*1000:.0f}mm  scale={hand_scale:.3f}m")
         except Exception:
             pass
 
@@ -1518,9 +1519,9 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
         world_up = Vector((0.0, 0.0, 1.0)) if abs(fwd.z) < 0.9 else Vector((1.0, 0.0, 0.0))
         ref  = (world_up - fwd * fwd.dot(world_up)).normalized()
         perp = fwd.cross(ref).normalized()
-        print(f"  [orbit] anchor={tuple(round(x, 3) for x in cen)}  scale={hand_scale:.3f}  fwd={tuple(round(x, 3) for x in fwd)}  (LVT)")
+        dbg(f"  [orbit] anchor={tuple(round(x, 3) for x in cen)}  scale={hand_scale:.3f}  fwd={tuple(round(x, 3) for x in fwd)}  (LVT)")
     elif center is not None or scale is not None:
-        print(f"  [orbit] anchor={tuple(round(x, 3) for x in cen)}  scale={hand_scale:.3f}  (LVT)")
+        dbg(f"  [orbit] anchor={tuple(round(x, 3) for x in cen)}  scale={hand_scale:.3f}  (LVT)")
 
     # NOTE: the crop is fitted to the ACTUAL hand extent AFTER isolation below (so the
     # measurement runs on the body-free isolated mesh) — see "[orbit] fit crop to hand".
@@ -1569,7 +1570,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
         _iso_obj = _isolate_hand_mesh(mesh_obj, hw, ew, tip=tip,
                                       wrist_island=True, keep_forearm=True)
     except Exception as _e:
-        print(f"  [orbit] hand isolation failed ({_e}) — rendering full mesh")
+        dbg(f"  [orbit] hand isolation failed ({_e}) — rendering full mesh")
         _iso_obj = None
 
     # Fit the crop to the ACTUAL hand extent, measured from the isolated mesh (body-
@@ -1635,7 +1636,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
                                     context='VERTS')
                                 _bm.to_mesh(_me)
                                 _bm.free()
-                                print(f"  [orbit] trimmed body bleed: {_nv - _n_in} verts "
+                                dbg(f"  [orbit] trimmed body bleed: {_nv - _n_in} verts "
                                       f"outside hand tube (lat<={_lcap*1000:.0f}mm, "
                                       f"tip+{_dcap*1000:.0f}mm)")
                                 _nv = len(_me.vertices)
@@ -1644,7 +1645,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
                                 _wp    = _co.reshape(_nv, 3)
                                 _along = (_wp - _hn) @ _fn
                     except Exception as _te:
-                        print(f"  [orbit] body-bleed trim skipped ({_te})")
+                        dbg(f"  [orbit] body-bleed trim skipped ({_te})")
 
                 _keep  = _along >= -hand_scale * 0.10   # drop the forearm (proximal of wrist)
                 if int(_keep.sum()) >= 10:
@@ -1664,7 +1665,7 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
                         # far below the tip-spread scale. Discard the isolation and render
                         # the FULL mesh with the caller's framing (a hand-with-context
                         # crop beats a tiny wrong fragment, and is what worked pre-isolation).
-                        print(f"  [orbit] isolation collapsed (fit {_fit:.3f} << "
+                        dbg(f"  [orbit] isolation collapsed (fit {_fit:.3f} << "
                               f"{hand_scale:.3f}) -- rendering full mesh")
                         try:
                             _bad = _iso_obj.data
@@ -1679,10 +1680,10 @@ def _render_hand_orbit(mesh_obj, hw, ew, temp_dir, prefix, tip=None, center=None
                         hand_scale = _fit
                         dist       = hand_scale * 1.5
                         cam_data.ortho_scale = hand_scale
-                        print(f"  [orbit] fit crop to hand: fwd={(_amax-_amin)*1000:.0f}mm "
+                        dbg(f"  [orbit] fit crop to hand: fwd={(_amax-_amin)*1000:.0f}mm "
                               f"lat={float(_lat.max())*2000:.0f}mm -> scale={hand_scale:.3f}")
         except Exception as _e:
-            print(f"  [orbit] hand-fit framing skipped ({_e})")
+            dbg(f"  [orbit] hand-fit framing skipped ({_e})")
 
     render_obj = _iso_obj if _iso_obj is not None else mesh_obj
 
@@ -2024,9 +2025,9 @@ def _normalized_detect_scale(mesh_obj, scale=None):
     S   = Matrix.Diagonal((s, s, s, 1.0))       # uniform scale about world origin
     orig_mw = mesh_obj.matrix_world.copy()
     if scale is not None:
-        print(f"[scale] forearm-anchored normalization x{s:.4f} for detection")
+        dbg(f"[scale] forearm-anchored normalization x{s:.4f} for detection")
     else:
-        print(f"[scale] character height {h:.2f}m outside [{_DETECT_SCALE_LO:.1f}, "
+        dbg(f"[scale] character height {h:.2f}m outside [{_DETECT_SCALE_LO:.1f}, "
               f"{_DETECT_SCALE_HI:.1f}]m — normalizing x{s:.4f} for detection")
 
     mesh_obj.matrix_world = S @ orig_mw
@@ -2110,7 +2111,7 @@ def _clip_rear_protrusions(mesh_obj):
         mw = ev.matrix_world
         verts = [mw @ v.co for v in ev.data.vertices]
     except Exception as e:
-        print(f"[body-clip] mesh read failed ({e}) — skipping rear clip")
+        dbg(f"[body-clip] mesh read failed ({e}) — skipping rear clip")
         return None
     if len(verts) < 100:
         return None
@@ -2146,7 +2147,7 @@ def _clip_rear_protrusions(mesh_obj):
     clip_y = max(body_back + 0.04 * height, heel_ymax + 0.02 * height)
     if mx_y - clip_y <= 0.08 * height:
         return None            # the "protrusion" was mostly feet — leave alone
-    print(f"[body-clip] rear protrusion detected: overhang {overhang:.2f}m "
+    dbg(f"[body-clip] rear protrusion detected: overhang {overhang:.2f}m "
           f"({overhang / height:.2f}x height) — clipping behind y={clip_y:.3f} "
           f"and detecting on the body-only copy")
 
@@ -2175,14 +2176,14 @@ def _clip_rear_protrusions(mesh_obj):
         if cut_edges:
             _bm.ops.holes_fill(bm, edges=cut_edges, sides=0)
     except Exception as e:
-        print(f"[body-clip] stump cap skipped ({e})")
+        dbg(f"[body-clip] stump cap skipped ({e})")
 
     bm.to_mesh(clip_data)
     bm.free()
 
     if len(clip_data.vertices) < 100:
         # Clip ate the mesh (bad estimate) — fail closed to the full mesh.
-        print("[body-clip] clip left too little geometry — using the full mesh")
+        dbg("[body-clip] clip left too little geometry — using the full mesh")
         bpy.data.objects.remove(clip_obj, do_unlink=True)
         bpy.data.meshes.remove(clip_data, do_unlink=True)
         return None
@@ -2279,7 +2280,7 @@ Fallback: geometric mesh estimate."""
                         # every tested body (arms-out and arms-down alike); a black-body
                         # collapse measures ~0.37. 0.55 sits in that gap with margin.
                         if (max(_xs) - min(_xs)) < 0.55 * _mesh_w:
-                            print(f"[ONNX-v2] detection collapsed (marker X-spread "
+                            dbg(f"[ONNX-v2] detection collapsed (marker X-spread "
                                   f"{(max(_xs) - min(_xs)):.2f}m vs mesh width "
                                   f"{_mesh_w:.2f}m) — re-rendering at "
                                   f"{_RENDER_RETRY_FACES} faces and retrying")
@@ -2340,7 +2341,7 @@ Fallback: geometric mesh estimate."""
                 _vw = [_mw @ v.co for v in _ev.data.vertices]
             except Exception as _e:
                 _vw = None
-                print(f"[legs] mesh read skipped ({_e})")
+                dbg(f"[legs] mesh read skipped ({_e})")
             if _vw and len(_vw) >= 20:
                 _gz = min(v.z for v in _vw); _hh = max(v.z for v in _vw) - _gz
 
@@ -2404,7 +2405,7 @@ Fallback: geometric mesh estimate."""
                             marker_pos[f"SHIN_{_ls}"] = _ctr(_kb)
                         _legs_centroided += 1
                     if _legs_centroided:
-                        print(f"[legs] knee/ankle/foot/heel/toes from leg-mesh "
+                        dbg(f"[legs] knee/ankle/foot/heel/toes from leg-mesh "
                               f"centroids ({_legs_centroided} side(s))")
 
                     # ── WRIST placement ───────────────────────────────────────────
@@ -2517,7 +2518,7 @@ Fallback: geometric mesh estimate."""
                             marker_pos[f"HAND_{_ws}"] = _w
                             _wmoved += 1
                     if _wmoved:
-                        print(f"[wrist] {_wmoved} HAND marker(s) placed at the wrist (narrowest cross-section)")
+                        dbg(f"[wrist] {_wmoved} HAND marker(s) placed at the wrist (narrowest cross-section)")
 
                     # ── Spine depth-centring ──────────────────────────────────────
                     # Put each midline marker at the TORSO's Y-centre at its own
@@ -2541,7 +2542,7 @@ Fallback: geometric mesh estimate."""
                             marker_pos[_sm] = Vector((_cx, _ymid, _p.z))
                             _smoved += 1
                     if _smoved:
-                        print(f"[spine] {_smoved} midline markers depth-centred in the torso")
+                        dbg(f"[spine] {_smoved} midline markers depth-centred in the torso")
 
         # ── 2b. Interior depth — FINAL pass, runs for EVERY source path ───────────
         # _fix_body_anatomy only runs when ONNX succeeds, and step 2 fills missing
@@ -2660,7 +2661,7 @@ Fallback: geometric mesh estimate."""
                     _ls  = 1.0 if _L.x >= _scx else -1.0
                     marker_pos[f"{_b}_L"] = Vector((_scx + _ls * _off, _ay, _az))
                     marker_pos[f"{_b}_R"] = Vector((_scx - _ls * _off, _ay, _az))
-            print("[symmetry] midline pinned to centre; L/R pairs "
+            dbg("[symmetry] midline pinned to centre; L/R pairs "
                   + ("mirrored/averaged" if _sym_on
                      else "kept raw (Symmetrical Detect OFF; weak sides still mirror-filled)"))
 
@@ -2782,7 +2783,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
         _auto = (_eng == 'GEOMETRIC'
                  and getattr(context.scene, 'finger_wrist_autosnap', True))
         if not _auto:
-            print("[fingers] wrist auto-snap "
+            dbg("[fingers] wrist auto-snap "
                   + ("not used by this engine (Geometric-only)"
                      if _eng != 'GEOMETRIC' else "OFF (manual wrist placement)")
                   + " -- keeping HAND markers as placed")
@@ -2793,15 +2794,15 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
             if _h is None:
                 continue
             if _e is None:
-                print(f"[fingers] {arp_side}: no ELBOW marker -- wrist auto-snap skipped")
+                dbg(f"[fingers] {arp_side}: no ELBOW marker -- wrist auto-snap skipped")
                 continue
             if _tm is None:
-                print(f"[fingers] {arp_side}: no HAND_TIP marker -- wrist auto-snap skipped")
+                dbg(f"[fingers] {arp_side}: no HAND_TIP marker -- wrist auto-snap skipped")
                 continue
             _tip_p = _tm.location.copy()
             _wr = _wrist_from_mesh(mesh_obj, _e.location.copy(), _tip_p)
             if _wr is None:
-                print(f"[fingers] {arp_side}: mesh wrist not found -- keeping HAND marker")
+                dbg(f"[fingers] {arp_side}: mesh wrist not found -- keeping HAND marker")
                 continue
             # Snap onto the mesh-wrist estimate essentially ALWAYS (2 mm floor, to
             # skip float noise). The ELBOW->HAND_TIP estimate is more reliable than
@@ -2821,7 +2822,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
             # body-detect marker in that case.
             _span = (_e.location - _tip_p).length
             if _span > 1e-6 and _off > 0.5 * _span:
-                print(f"[fingers] {arp_side}: mesh-wrist estimate {_off*1000:.0f}mm "
+                dbg(f"[fingers] {arp_side}: mesh-wrist estimate {_off*1000:.0f}mm "
                       f"from the HAND marker (> half the elbow->tip span "
                       f"{_span*1000:.0f}mm) -- estimate rejected, keeping HAND marker")
                 continue
@@ -2834,9 +2835,9 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                 # small corrections snap silently so the report isn't noisy.
                 if _off > 0.015:
                     self._snapped.append((arp_side, _off * 1000))
-                print(f"[fingers] HAND_{arp_side} snapped to mesh wrist ({_off*1000:.0f}mm)")
+                dbg(f"[fingers] HAND_{arp_side} snapped to mesh wrist ({_off*1000:.0f}mm)")
             else:
-                print(f"[fingers] {arp_side}: HAND marker already on wrist ({_off*1000:.0f}mm)")
+                dbg(f"[fingers] {arp_side}: HAND marker already on wrist ({_off*1000:.0f}mm)")
 
     def execute(self, context):
         # ── Resolve body mesh ─────────────────────────────────────────────────
@@ -2934,7 +2935,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
             # cleanup, and the existing per-side geometric quality takeover.
             # Every stage is already "use the best, rebuild only on failure".
             engine = 'TEMPLATE'
-            print("[fingers] AUTO engine -> template-constrained pipeline "
+            dbg("[fingers] AUTO engine -> template-constrained pipeline "
                   "(neural evidence + geometric fallback + quality takeover)")
 
         try:
@@ -2985,7 +2986,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                                 knuckle_radius=knuckle_r, width_tolerance=width_tol,
                                 straighten_clamp=str_clamp)
                         except Exception as _ne:
-                            print(f"[template {arp_side}] neural evidence failed: {_ne}")
+                            dbg(f"[template {arp_side}] neural evidence failed: {_ne}")
                         if not evidence:
                             try:
                                 from .ai_detect_geo import detect_fingers_geo
@@ -2995,7 +2996,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                                     thumb_depth=getattr(context.scene, 'geo_thumb_depth', 0.45),
                                     min_finger=getattr(context.scene, 'geo_min_finger', 0.30))
                             except Exception as _ge:
-                                print(f"[template {arp_side}] geometric evidence failed: {_ge}")
+                                dbg(f"[template {arp_side}] geometric evidence failed: {_ge}")
                         result = detect_fingers_template(mesh_obj, hw, ew, arp_side, evidence)
                         if result:
                             marker_pos.update(result)
@@ -3040,7 +3041,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                     for k, v in list(marker_pos.items()):
                         if k.endswith(f"_{src}"):
                             marker_pos[f"{k[:-2]}_{dst}"] = Vector((2.0 * cx - v.x, v.y, v.z))
-                    print(f"[geo] {dst} side failed -- mirrored {src} onto {dst}")
+                    dbg(f"[geo] {dst} side failed -- mirrored {src} onto {dst}")
                     self.report({'WARNING'},
                                 f"Geometric engine: {dst} hand failed — mirrored the {src} hand.")
                 elif (hw_l and hw_r and ok['L'] and ok['R']
@@ -3063,7 +3064,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                 hw_r = hand_elbow.get("HAND_R")
                 _sym_on = getattr(context.scene, "autorig_detect_symmetry", True)
                 if not _sym_on:
-                    print("[symmetry] Symmetrical Detect OFF — keeping raw per-side hands")
+                    dbg("[symmetry] Symmetrical Detect OFF — keeping raw per-side hands")
                 if hw_l and hw_r and _sym_on:
                     enforce_finger_symmetry(marker_pos, hw_l, hw_r)
                 # ── Post-ONNX finger cleanup passes ───────────────────────────
@@ -3160,7 +3161,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                         _warns = finger_quality_report(marker_pos, _gs)
                         if not _warns:
                             continue
-                        print(f"[takeover {_gs}] neural quality flags "
+                        dbg(f"[takeover {_gs}] neural quality flags "
                               f"({'; '.join(_warns)}) -- trying geometric engine")
                         _geo = None
                         try:
@@ -3170,13 +3171,13 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                                 thumb_depth=getattr(context.scene, 'geo_thumb_depth', 0.45),
                                 min_finger=getattr(context.scene, 'geo_min_finger', 0.30))
                         except Exception as _ge:
-                            print(f"[takeover {_gs}] geometric engine error: {_ge}")
+                            dbg(f"[takeover {_gs}] geometric engine error: {_ge}")
                         if _geo and len(_geo) >= 20:
                             marker_pos.update(_geo)
                             _geo_swapped.append(_gs)
-                            print(f"[takeover {_gs}] geometric result replaces neural")
+                            dbg(f"[takeover {_gs}] geometric result replaces neural")
                         else:
-                            print(f"[takeover {_gs}] geometric engine declined "
+                            dbg(f"[takeover {_gs}] geometric engine declined "
                                   f"-- keeping neural result")
                     if _geo_swapped and _sym_on:
                         hw_l = hand_elbow.get("HAND_L")
@@ -3184,7 +3185,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                         if hw_l and hw_r:
                             enforce_finger_symmetry(marker_pos, hw_l, hw_r)
                 except Exception as _te:
-                    print(f"[takeover] skipped: {_te}")
+                    dbg(f"[takeover] skipped: {_te}")
                 # FINAL symmetry: per-side cleanup guards fire asymmetrically
                 # (L thumb DIP floated while R sat inside), and Rigify wants
                 # exactly mirrored hands. Containment-based: the side that
@@ -3197,7 +3198,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                         from .ai_detect_lvt import enforce_final_symmetry
                         enforce_final_symmetry(marker_pos, mesh_obj, hw_l, hw_r)
                 except Exception as _fse:
-                    print(f"[symmetry-final] skipped: {_fse}")
+                    dbg(f"[symmetry-final] skipped: {_fse}")
             # Quality check: flag low-confidence hands so the user can spot-check
             # instead of silently shipping a bad result.
             _quality = []
@@ -3215,7 +3216,7 @@ Runs the same hybrid pipeline as EasyDetect Body but for fingers only."""
                     _sev = any('collapsed' in _w for _w in _fw)
                     _fail_counts[_qs] = _n
                     _fail_severe[_qs] = _sev
-                    print(f"[finger-fail] {_qs}: {_n} independent defect(s)"
+                    dbg(f"[finger-fail] {_qs}: {_n} independent defect(s)"
                           + ("  [SEVERE: collapsed finger]" if _sev else "")
                           + (f" -- {'; '.join(_fw)}" if _fw else ""))
             # Backstop: a geometric parse where NO 5-tube set looked like a hand
@@ -3315,7 +3316,7 @@ def _popup_message(context, message, title="Notice", icon='INFO'):
         (context or bpy.context).window_manager.popup_menu(
             _draw, title=title, icon=icon)
     except Exception as _e:
-        print(f"[popup] {title}: {message!r}  (popup failed: {_e})")
+        dbg(f"[popup] {title}: {message!r}  (popup failed: {_e})")
 
 
 _CONF_HALO_PREFIX = "ER_CONF_HALO_"
@@ -3499,7 +3500,7 @@ def _face_eyebrow_geo_suspects(positions):
             gaps = [(chain[i] - chain[i + 1]).length for i in range(len(chain) - 1)]
             gmax, gmin = max(gaps), min(gaps)
             uneven = gmax > 1e-6 and gmin < 0.45 * gmax
-            print(f"  [face-gate] brow {side}: gaps(mm)="
+            dbg(f"  [face-gate] brow {side}: gaps(mm)="
                   f"{[round(g*1000,1) for g in gaps]} min/max={gmin/gmax:.2f}"
                   f"{'  -> UNEVEN, geo' if uneven else ''}")
             _brow_bad = _brow_bad or uneven
@@ -3522,7 +3523,7 @@ def _face_eyebrow_geo_suspects(positions):
     if wl and wr:
         lo, hi = min(wl, wr), max(wl, wr)
         collapsed = lo < 0.55 * hi
-        print(f"  [face-gate] eye width(mm) L={wl*1000:.1f} R={wr*1000:.1f} "
+        dbg(f"  [face-gate] eye width(mm) L={wl*1000:.1f} R={wr*1000:.1f} "
               f"ratio={lo/hi:.2f}{'  -> asymmetric, both eyes -> geo' if collapsed else ''}")
         if collapsed:
             for side in ("L", "R"):
@@ -3546,7 +3547,7 @@ def symmetrize_face_markers(context):
     Returns the number of markers moved.
     """
     if not getattr(context.scene, "autorig_detect_symmetry", True):
-        print("[face-symmetry] Symmetrical Detect OFF — keeping raw face markers")
+        dbg("[face-symmetry] Symmetrical Detect OFF — keeping raw face markers")
         return 0
     objs = {}
     for o in bpy.data.objects:
@@ -3578,7 +3579,7 @@ def symmetrize_face_markers(context):
         if not (n.endswith("_L") or n.endswith("_R")):
             o.location.x = cx
             moved += 1
-    print(f"[face-symmetry] {moved} face markers symmetrized about x={cx:.4f} "
+    dbg(f"[face-symmetry] {moved} face markers symmetrized about x={cx:.4f} "
           f"({len(pairs)} L/R pairs averaged; midline pinned)")
     return moved
 
@@ -3715,7 +3716,7 @@ snap to the mesh. Teeth/tongue are excluded (place those geometrically)."""
             filled = len({o.name for o in bpy.data.objects
                           if o.name.startswith("MARKER_FACE_")} - before)
         except Exception as _e:
-            print(f"[face] secondary-marker fill failed: {_e}")
+            dbg(f"[face] secondary-marker fill failed: {_e}")
 
         # Safety net: if the geometric fill could not place a gated eye/brow suspect
         # (e.g. the geometric detector also failed on this odd mesh), restore its
@@ -3730,7 +3731,7 @@ snap to the mesh. Teeth/tongue are excluded (place those geometrically)."""
                 obj.scale = (_sc, _sc, _sc)
                 _rescued += 1
         if _geo_suspects:
-            print(f"  [face-gate] {gated} eye/brow marker(s) handed to geometric; "
+            dbg(f"  [face-gate] {gated} eye/brow marker(s) handed to geometric; "
                   f"{gated - _rescued} re-placed, {_rescued} kept neural (geo also failed)")
 
         # Symmetrical Detect: mirror-average the face L/R (mainly for detects
@@ -4343,10 +4344,10 @@ def _detect_face_onnx(cen, views, S, bvh, act=0.22):
             os.makedirs(_dbg, exist_ok=True)
             for v in views:
                 shutil.copy2(v["path"], os.path.join(_dbg, f"{v['name']}.png"))
-            print(f"[face-infer] cen={tuple(round(float(c),3) for c in (cen.x,cen.y,cen.z))} "
+            dbg(f"[face-infer] cen={tuple(round(float(c),3) for c in (cen.x,cen.y,cen.z))} "
                   f"scale={round(float(views[0]['scale']),4)}  renders -> {_dbg}")
         except Exception as _e:
-            print("[face-infer] render dump failed:", _e)
+            dbg("[face-infer] render dump failed:", _e)
 
     Hs   = float(_FACE_HMAP_SIZE)
     cenv = np.array([cen.x, cen.y, cen.z], dtype=np.float64)
@@ -4383,7 +4384,7 @@ def _detect_face_onnx(cen, views, S, bvh, act=0.22):
             Q = cenv + a * right + b * up
             cand.append((mx, (Q, vdir)))
         if _DEBUG_FACE:
-            print(f"  [face] {name:24s} n={len(cand)} peaks={_pk}")
+            dbg(f"  [face] {name:24s} n={len(cand)} peaks={_pk}")
         if not cand:
             continue
         # Relative-confidence gate: keep only the views whose peak is near this

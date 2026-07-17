@@ -1,3 +1,4 @@
+﻿from .constants import dbg
 # ai_detect_template.py
 # -----------------------------------------------------------------------------
 # TEMPLATE finger engine (Phase 1) - "constrained hand builder".
@@ -158,7 +159,7 @@ def _relabel_by_identity(ev, side, hw):
     remap = {canon: named[canon]["ref"] for canon in ("thumb",) + _FOUR}
     if all(remap[c] == c for c in remap):
         return ev                       # already correct -> no change
-    print(f"[template {side}] identity RELABEL: "
+    dbg(f"[template {side}] identity RELABEL: "
           + ", ".join(f"{c}<-{remap[c]}" for c in remap if remap[c] != c))
     return {c: ev[remap[c]] for c in ("thumb",) + _FOUR}
 
@@ -192,7 +193,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
     """
     if not evidence:
         if verbose:
-            print(f"  [template {side}]: no evidence - declined")
+            dbg(f"  [template {side}]: no evidence - declined")
         return None
 
     ev = _evidence_points(evidence, side)
@@ -200,7 +201,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
     tips = {f: ev[f]["tip"] for f in _FOUR if ev[f]["tip"] is not None}
     if len(tips) < 3:
         if verbose:
-            print(f"  [template {side}]: only {len(tips)} tips - declined")
+            dbg(f"  [template {side}]: only {len(tips)} tips - declined")
         return None
 
     # -- Anatomical length expectations (from tips + wrist) --------------------
@@ -230,7 +231,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
             why = ("missing" if m is None else
                    f"implausible ({(tip - m).length*1000:.0f}mm vs "
                    f"expected ~{exp[f]*1000:.0f}mm)")
-            print(f"  [template {side}]: {f} MCP evidence {why} -- "
+            dbg(f"  [template {side}]: {f} MCP evidence {why} -- "
                   f"rebuilt from tip + anatomical length")
         return tip - d.normalized() * exp[f]
 
@@ -238,7 +239,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
     p_mcp = _anchor("pinky")
     if i_mcp is None or p_mcp is None or (i_mcp - p_mcp).length < 1e-4:
         if verbose:
-            print(f"  [template {side}]: missing/degenerate index|pinky MCP - declined")
+            dbg(f"  [template {side}]: missing/degenerate index|pinky MCP - declined")
         return None
 
     # -- Palm frame -----------------------------------------------------------
@@ -288,7 +289,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
             for f in _FOUR:
                 mcp[f] = mcp[f] + across * shift
             if verbose:
-                print(f"  [template {side}]: knuckle row re-centred "
+                dbg(f"  [template {side}]: knuckle row re-centred "
                       f"{shift*1000:+.0f}mm onto the fingertips (evidence row "
                       f"was laterally biased)")
 
@@ -317,7 +318,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
             mcp[f] = Vector(e_m)
             kept_mcp.append(f)
     if kept_mcp and verbose:
-        print(f"  [template {side}]: evidence MCP kept for "
+        dbg(f"  [template {side}]: evidence MCP kept for "
               f"{','.join(kept_mcp)} (depth follows the detector)")
 
     # Median finger length (fallback for a finger whose tip is missing).
@@ -456,7 +457,7 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
             out[_key(thumb["tip"],   side)] = Vector(t_tip)
             rebuilt_thumb = True
             if verbose:
-                print(f"  [template {side}]: thumb chain compressed "
+                dbg(f"  [template {side}]: thumb chain compressed "
                       f"(CMC->tip {ch*1000:.0f}mm vs wrist->tip "
                       f"{span*1000:.0f}mm) -- rebuilt along wrist->thumbtip")
     if not rebuilt_thumb:
@@ -471,11 +472,11 @@ def detect_fingers_template(mesh_obj, hw, ew, side, evidence, verbose=True):
                  (mcp["ring"] - mcp["pinky"]).length ]
         # tip lateral offset from own MCP, index->pinky order (mm, +ve = toward index)
         offs = '/'.join('%+.0f' % (tip_off.get(f, 0.0) * 1000) for f in _FOUR)
-        print(f"  [template {side}]: rebuilt from {len(tips)}/4 tips  "
+        dbg(f"  [template {side}]: rebuilt from {len(tips)}/4 tips  "
               f"row_w={row_w*1000:.0f}mm  MCP gaps="
               f"{'/'.join('%.0f' % (g*1000) for g in gaps)}mm  "
               f"lens={'/'.join('%.0f' % ((tips[f]-mcp[f]).length*1000) for f in _FOUR if f in tips)}mm")
-        print(f"  [template {side}]: tip across-offset (i/m/r/p) = {offs}mm"
+        dbg(f"  [template {side}]: tip across-offset (i/m/r/p) = {offs}mm"
               + (f"  STRAIGHTENED {','.join(straightened)}" if straightened else "")
               + (f"  curve-walked {len(walked)}/4" if walked else "")
               + (f"  evidence PIP/DIP kept: {','.join(kept)}" if kept else ""))

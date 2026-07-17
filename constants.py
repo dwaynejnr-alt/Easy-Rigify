@@ -1,5 +1,22 @@
 # constants.py — Marker definitions, bone maps, and size configurations for Easy Rigify.
+import os as _os
+
 from mathutils import Vector, Matrix
+
+# ── Debug logging ─────────────────────────────────────────────────────────────
+# The detection pipelines (body / face / fingers) print a lot of per-stage
+# diagnostics ([framing], [decollapse], [depth], [lips], …). Useful in dev,
+# noise for shipped users — so route them through dbg(), which is silent
+# unless the EASY_RIGIFY_DEBUG env var is set (e.g. `set EASY_RIGIFY_DEBUG=1`).
+# Genuine user-facing messages use operator self.report(), not dbg().
+DEBUG = _os.environ.get("EASY_RIGIFY_DEBUG", "").strip().lower() not in (
+    "", "0", "false", "no", "off")
+
+
+def dbg(*args, **kwargs):
+    """Console print gated on EASY_RIGIFY_DEBUG (off by default)."""
+    if DEBUG:
+        print(*args, **kwargs)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONSTANTS

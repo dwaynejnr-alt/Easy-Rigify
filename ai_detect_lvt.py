@@ -6,6 +6,7 @@ Last resort: _place_fingers_geometric.
 """
 
 import bpy
+from .constants import dbg
 import math
 import os
 import numpy as np
@@ -217,9 +218,9 @@ def _detect_landmarks_onnx(image_path, cam_feat):
             stem     = os.path.splitext(os.path.basename(image_path))[0]
             dbg_path = os.path.join(r"C:\Temp", f"{stem}_lm.png")
             dbg.save(dbg_path)
-            print(f"  [debug lm] {dbg_path}  ({len(joints)}/20 joints)")
+            dbg(f"  [debug lm] {dbg_path}  ({len(joints)}/20 joints)")
         except Exception as _e:
-            print(f"  [debug lm] failed: {_e}")
+            dbg(f"  [debug lm] failed: {_e}")
 
     return joints
 
@@ -282,7 +283,7 @@ def _detect_tips_onnx(image_path, cam_feat=None):
     output_names = [o.name for o in sess.get_outputs()]
     out_map      = dict(zip(output_names, raw_outputs))
     if "heatmaps" not in out_map:
-        print(f"  [LVT] ONNX missing 'heatmaps'. Available: {output_names}")
+        dbg(f"  [LVT] ONNX missing 'heatmaps'. Available: {output_names}")
         return {}
     heatmaps = out_map["heatmaps"][0]  # [5, _HMAP_OUTPUT, _HMAP_OUTPUT]
 
@@ -362,7 +363,7 @@ def _detect_tips_onnx(image_path, cam_feat=None):
     tips = {f: (v[0], v[1]) for f, v in tips.items()}
 
     if _DEBUG_TIP:
-        print(f"  [tip peaks] " + "  ".join(f"{n}:{c:.3f}@({x},{y})" for n, x, y, c in raw_peaks))
+        dbg(f"  [tip peaks] " + "  ".join(f"{n}:{c:.3f}@({x},{y})" for n, x, y, c in raw_peaks))
         try:
             from PIL import Image as _PILD, ImageDraw as _Draw
             dbg  = _PILD.open(image_path).convert("RGB")
@@ -378,7 +379,7 @@ def _detect_tips_onnx(image_path, cam_feat=None):
             dbg_path = os.path.join(r"C:\Temp", f"{stem}_tip.png")
             dbg.save(dbg_path)
         except Exception as _e:
-            print(f"  [debug tip] failed: {_e}")
+            dbg(f"  [debug tip] failed: {_e}")
 
     return tips
 
@@ -596,10 +597,10 @@ def _triangulate_tips_ls(per_view_tips, per_view_cameras, hw, ew, arp_side,
         if bvh is not None:
             hit, _n, _idx, snap_dist = bvh.find_nearest(P)
             if hit is None or snap_dist > 0.15 * _sf:
-                print(f"  [grid] {name}: dropped (snap_dist={snap_dist:.3f}m  -- wrong body region)")
+                dbg(f"  [grid] {name}: dropped (snap_dist={snap_dist:.3f}m  -- wrong body region)")
                 continue
             if snap_dist > 0.01 * _sf:
-                print(f"  {name}: tip snapped {snap_dist:.3f}m -> mesh surface")
+                dbg(f"  {name}: tip snapped {snap_dist:.3f}m -> mesh surface")
                 P = Vector(hit)
                 # find_nearest snaps to the CLOSEST surface point - a tip triangulated
                 # off to one side lands on the finger's SIDE, not its distal midline.
@@ -622,7 +623,7 @@ def _triangulate_tips_ls(per_view_tips, per_view_cameras, hw, ew, arp_side,
         # caught by the mesh-snap >15cm drop above.
         _eff_max = max(max_dist, (hand_scale or _HAND_SCALE) * 1.25 + 0.05)
         if (P - hw_v).length > _eff_max:
-            print(f"  [grid] {name}: too far from wrist {(P - hw_v).length:.3f}m "
+            dbg(f"  [grid] {name}: too far from wrist {(P - hw_v).length:.3f}m "
                   f"(limit {_eff_max:.3f}m)")
             continue
 
@@ -798,7 +799,7 @@ def _isolate_hand_mesh(mesh_obj, hw, ew, tip=None, wrist_island=False, keep_fore
                     return max(((v.co - hw_v).dot(arm_dir) for v in _isl), default=-1e9)
                 _cands = [_isl for _isl in (r_tip, r_wr) if len(_isl) >= 30]
                 reached = max(_cands, key=_reach) if _cands else r_wr
-            print(f"  [isolate] after cuts: {len(bm.verts)} verts, "
+            dbg(f"  [isolate] after cuts: {len(bm.verts)} verts, "
                   f"tip-island {len(r_tip)} (d{d_tip*1000:.0f}mm) "
                   f"wrist-island {len(r_wr)} (d{d_wr*1000:.0f}mm) -> kept {len(reached)}")
             if len(reached) >= 30:
@@ -848,7 +849,7 @@ def _isolate_hand_mesh(mesh_obj, hw, ew, tip=None, wrist_island=False, keep_fore
                                     reached.update(_isl); _added += len(_isl)
                                     break
                         if _added:
-                            print(f"  [isolate] re-attached {_added} vert(s) of "
+                            dbg(f"  [isolate] re-attached {_added} vert(s) of "
                                   f"separate finger geometry (tip was "
                                   f"{_tip_gap*1000:.0f}mm off the palm island)")
                 dead = [v for v in bm.verts if v not in reached]
@@ -1143,7 +1144,7 @@ def _compute_render_hw(hw, ew, arp_side, mesh_obj=None, tip=None):
     _est = _mesh_wrist_for_framing(mesh_obj, hw, ew, tip)
     if _est is not None:
         if (_est - hw_v).length > 0.001:
-            print(f"  [orbit] framing wrist = mesh estimate "
+            dbg(f"  [orbit] framing wrist = mesh estimate "
                   f"({(_est - hw_v).length * 1000:.0f}mm from HAND marker)")
         hw_v = _est
     ew_v    = Vector(ew)
@@ -1358,7 +1359,7 @@ def _straighten_finger_phalanges(marker_pos, tips_3d, palm_center, arp_side, str
             projected = _project_onto_plane(pt, mcp, plane_n)
             shift = (projected - pt).length
             if shift > max_shift:
-                print(f"  [straighten] {finger}/{key}: shift {shift*1000:.1f}mm > 15%  -- skipped")
+                dbg(f"  [straighten] {finger}/{key}: shift {shift*1000:.1f}mm > 15%  -- skipped")
                 continue
             marker_pos[key] = projected
 
@@ -1456,7 +1457,7 @@ def _phalange_chain_geom(tip_3d, hw, ew, arp_side, finger_name,
         for i in range(2, len(widths)):
             if widths[i] > palm_threshold and widths[i] > widths[i - 1] * 1.2:
                 mcp = positions[max(0, i - 2)]
-                print(f"  [chain] {finger_name}: MCP det step {i-2}/{n_steps}  "
+                dbg(f"  [chain] {finger_name}: MCP det step {i-2}/{n_steps}  "
                       f"w={widths[max(0,i-2)]:.3f}m base={baseline:.3f}m thr={palm_threshold:.3f}m")
                 break
         else:
@@ -1549,7 +1550,7 @@ def detect_fingers_landmark(mesh_obj, hw, ew, temp_dir, arp_side, orbit_center=N
             mesh_obj, hw_render, ew, temp_dir, f"hand_{arp_side}", tip=_tip_pt,
             center=orbit_center, scale=orbit_scale, orbit_fwd=orbit_fwd)
 
-    print(f"Landmark [{arp_side}]: hw={hw!r}  hw_render={tuple(round(x,3) for x in hw_render)}  "
+    dbg(f"Landmark [{arp_side}]: hw={hw!r}  hw_render={tuple(round(x,3) for x in hw_render)}  "
           f"cen={cen!r}  hand_scale={hand_scale:.3f}")
 
     # 9-dim cam_feat: [right_vec(3), up_vec(3), side, sin(theta), cos(theta)]
@@ -1571,7 +1572,7 @@ def detect_fingers_landmark(mesh_obj, hw, ew, temp_dir, arp_side, orbit_center=N
         per_view_joints.append(joints)
         per_view_cameras.append((cam_pos, right_vec, up_vec, forward_vec))
 
-    print(f"Landmark [{arp_side}]: {len(per_view_joints)}/{_ORBIT_N_VIEWS} views passed (14+ joints conf>=0.4)")
+    dbg(f"Landmark [{arp_side}]: {len(per_view_joints)}/{_ORBIT_N_VIEWS} views passed (14+ joints conf>=0.4)")
     if len(per_view_joints) < 2:
         return None
 
@@ -1591,10 +1592,10 @@ def detect_fingers_landmark(mesh_obj, hw, ew, temp_dir, arp_side, orbit_center=N
             arp_key = f"{arp_base}_{arp_side}"
             if arp_key not in marker_pos and arp_key in geom_all:
                 marker_pos[arp_key] = geom_all[arp_key]
-                print(f"  {lm_name}: grafted from geometric")
+                dbg(f"  {lm_name}: grafted from geometric")
 
     n = len(marker_pos)
-    print(f"Landmark [{arp_side}]: {n}/20 markers placed")
+    dbg(f"Landmark [{arp_side}]: {n}/20 markers placed")
     if n < 12:
         return None
 
@@ -1603,7 +1604,7 @@ def detect_fingers_landmark(mesh_obj, hw, ew, temp_dir, arp_side, orbit_center=N
     # lower floor. 20mm still rejects true palm-bias collapse (~0-16mm) while
     # accepting borderline predictions on short fingers (e.g. index 27mm on A-pose).
     good_len = 0
-    print(f"Landmark [{arp_side}]: MCP->TIP lengths:")
+    dbg(f"Landmark [{arp_side}]: MCP->TIP lengths:")
     for finger in ("thumb", "index", "middle", "ring", "pinky"):
         arp = _FINGER_TO_ARP.get(finger)
         if arp is None:
@@ -1613,11 +1614,11 @@ def detect_fingers_landmark(mesh_obj, hw, ew, temp_dir, arp_side, orbit_center=N
         tip = marker_pos.get(tip_k)
         mcp = marker_pos.get(mcp_k)
         flen = (tip - mcp).length if (tip and mcp) else 0.0
-        print(f"  {finger}: {flen * 1000:.1f}mm")
+        dbg(f"  {finger}: {flen * 1000:.1f}mm")
         if flen >= 0.020:
             good_len += 1
     if good_len < 3:
-        print(f"Landmark [{arp_side}]: collapsed ({good_len}/5 fingers >=2cm)  -- returning None")
+        dbg(f"Landmark [{arp_side}]: collapsed ({good_len}/5 fingers >=2cm)  -- returning None")
         return None
 
     # -- Two-pass framing refinement ------------------------------------------
@@ -1647,7 +1648,7 @@ def detect_fingers_landmark(mesh_obj, hw, ew, temp_dir, arp_side, orbit_center=N
             if res2:
                 s1 = _finger_ext_sum(marker_pos, arp_side)
                 s2 = _finger_ext_sum(res2, arp_side)
-                print(f"Landmark [{arp_side}]: two-pass ext sum  pass1={s1*1000:.0f}mm  "
+                dbg(f"Landmark [{arp_side}]: two-pass ext sum  pass1={s1*1000:.0f}mm  "
                       f"pass2={s2*1000:.0f}mm  -> using {'pass2' if s2 >= s1 else 'pass1'}")
                 if s2 >= s1:
                     return res2   # already straightened/centered by the inner call
@@ -1699,7 +1700,7 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
         except Exception:
             _mext = None
         if _mext is not None and _mext > 0.03 and _tlen > 2.5 * _mext:
-            print(f"  LVT [{arp_side}]: HAND_TIP marker looks misplaced "
+            dbg(f"  LVT [{arp_side}]: HAND_TIP marker looks misplaced "
                   f"{_tlen*1000:.0f}mm vs mesh ~{_mext*1000:.0f}mm - using geometry")
             _tip_pt  = _hwv + _arm_n * _mext
             _tip_obj = None
@@ -1733,7 +1734,7 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
             # training recipe: scale = 2.5 * radius-from-centroid. _spread is that
             # radius measured from the mesh -> match the trained framing for big hands.
             _scale_lvt = max(_scale_lvt, _spread * 2.5)
-        print(f"  [framing {arp_side}] arm_ratio={_hand_len*1.1:.3f} "
+        dbg(f"  [framing {arp_side}] arm_ratio={_hand_len*1.1:.3f} "
               f"spread={'%.3f' % _spread if _spread else 'None'} "
               f"-> scale={_scale_lvt:.3f}")
         cen, orbit_views, hand_scale, dist = _render_hand_orbit(
@@ -1753,7 +1754,7 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
     if orbit_views:
         _ORBIT_REUSE[arp_side] = (cen, orbit_views, hand_scale, dist)
 
-    print(f"LVT [{arp_side}]: hw={hw!r}  hw_render={tuple(round(x,3) for x in hw_render)}  "
+    dbg(f"LVT [{arp_side}]: hw={hw!r}  hw_render={tuple(round(x,3) for x in hw_render)}  "
           f"cen={cen!r}  hand_scale={hand_scale:.3f}")
 
     # 8-dim cam_feat: [right_vec(3), up_vec(3), side_L, side_R] one-hot
@@ -1772,7 +1773,7 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
         per_view_tips.append(tips)
         per_view_cameras.append((cam_pos, right_vec, up_vec, forward_vec))
 
-    print(f"LVT [{arp_side}]: {len(per_view_tips)}/{_ORBIT_N_VIEWS} views had 3+ tips")
+    dbg(f"LVT [{arp_side}]: {len(per_view_tips)}/{_ORBIT_N_VIEWS} views had 3+ tips")
     if len(per_view_tips) < 2:
         return None
 
@@ -1804,14 +1805,14 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
                     hit, _n, _idx, snap_dist = _hand_bvh.find_nearest(geom_tip)
                     if hit is not None and snap_dist < 0.15:
                         tips_3d[fname] = Vector(hit)
-                        print(f"  {fname}: grafted+snapped ({reason}, snap={snap_dist:.3f}m)")
+                        dbg(f"  {fname}: grafted+snapped ({reason}, snap={snap_dist:.3f}m)")
                     else:
                         tips_3d[fname] = geom_tip
-                        print(f"  {fname}: grafted tip from geometric ({reason})")
+                        dbg(f"  {fname}: grafted tip from geometric ({reason})")
 
     n_detected = len(tips_3d)
     hw_v = Vector(hw)
-    print(f"LVT [{arp_side}]: {n_detected}/5 tips detected")
+    dbg(f"LVT [{arp_side}]: {n_detected}/5 tips detected")
     if n_detected < 3:
         return None
 
@@ -1846,7 +1847,7 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
                 axis = diff.normalized() if diff.length > 1e-6 else Vector((0.0, 1.0, 0.0))
                 tips_3d[fa] = mid + axis * (_PUSH_TARGET * 0.5)
                 tips_3d[fb] = mid - axis * (_PUSH_TARGET * 0.5)
-                print(f"  LVT [{arp_side}]: {fa}/{fb} collapsed  -- pushed apart to {_PUSH_TARGET*1000:.0f}mm")
+                dbg(f"  LVT [{arp_side}]: {fa}/{fb} collapsed  -- pushed apart to {_PUSH_TARGET*1000:.0f}mm")
             else:
                 # Non-adjacent: genuine duplicate  -- remove the more isolated tip
                 def _min_dist(name):
@@ -1854,16 +1855,16 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
                     return min((tips_3d[name] - o).length for o in others) if others else 0
                 if _min_dist(fa) < _min_dist(fb):
                     del tips_3d[fa]
-                    print(f"  LVT [{arp_side}]: {fa} tip removed (collapsed onto {fb})")
+                    dbg(f"  LVT [{arp_side}]: {fa} tip removed (collapsed onto {fb})")
                 else:
                     del tips_3d[fb]
-                    print(f"  LVT [{arp_side}]: {fb} tip removed (collapsed onto {fa})")
+                    dbg(f"  LVT [{arp_side}]: {fb} tip removed (collapsed onto {fa})")
                 break
 
     # Shift walk target 25% toward tip centroid  -- makes palm transition detection
     # work regardless of where body-detection placed the wrist marker.
     chain_hw = _estimate_palm_center(hw, tips_3d, ew=ew, arp_side=arp_side, palm_depth=palm_depth)
-    print(f"  LVT [{arp_side}]: palm_center={tuple(round(x,3) for x in chain_hw)}")
+    dbg(f"  LVT [{arp_side}]: palm_center={tuple(round(x,3) for x in chain_hw)}")
 
     marker_pos  = {}
     joint_names = ['tip', 'phal3', 'phal2', 'phal1']
@@ -1956,21 +1957,21 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
             # below the geometric hand length - then fall back to the reliable render
             # scale. Plus a wide absolute sanity bound for absurd values.
             if hand_scale and stable_scale < hand_scale * 0.70:
-                print(f"  LVT [{arp_side}]: stable_scale {stable_scale:.3f}m collapsed "
+                dbg(f"  LVT [{arp_side}]: stable_scale {stable_scale:.3f}m collapsed "
                       f"(<70% of render {hand_scale:.3f}m) - tips merged, rejecting LVT chain")
                 stable_scale   = hand_scale
                 _tip_collapsed = True
             elif stable_scale < 0.03:
-                print(f"  LVT [{arp_side}]: stable_scale {stable_scale:.3f}m below floor "
+                dbg(f"  LVT [{arp_side}]: stable_scale {stable_scale:.3f}m below floor "
                       f"- tips merged, rejecting LVT chain")
                 stable_scale   = hand_scale if hand_scale else stable_scale
                 _tip_collapsed = True
             elif stable_scale > 0.80:
-                print(f"  LVT [{arp_side}]: stable_scale {stable_scale:.3f}m out of bounds "
+                dbg(f"  LVT [{arp_side}]: stable_scale {stable_scale:.3f}m out of bounds "
                       f"- using render scale {hand_scale:.3f}m")
                 stable_scale = hand_scale if hand_scale else stable_scale
 
-            print(f"  LVT [{arp_side}]: stable_cen={tuple(round(x,3) for x in stable_cen)}  "
+            dbg(f"  LVT [{arp_side}]: stable_cen={tuple(round(x,3) for x in stable_cen)}  "
                   f"stable_scale={stable_scale:.3f}m  (geometry-based)")
         else:
             stable_cen, stable_scale, stable_fwd = cen, hand_scale, lvt_fwd
@@ -1981,7 +1982,7 @@ def detect_fingers_lvt(mesh_obj, hw, ew, temp_dir, arp_side,
     # as primary nor kept as lvt_raw for tip anchoring) but KEEP the raw per-view
     # tips so the mesh fallback still has something to work with if ONNX also fails.
     if _tip_collapsed:
-        print(f"  LVT [{arp_side}]: tip geometry collapsed - failing closed to ONNX (chain discarded)")
+        dbg(f"  LVT [{arp_side}]: tip geometry collapsed - failing closed to ONNX (chain discarded)")
         marker_pos = None
 
     return marker_pos, per_view_tips, per_view_cameras, stable_cen, stable_scale, stable_fwd
@@ -2111,7 +2112,7 @@ def resnap_tips_to_finger_end(marker_pos, mesh_obj, arp_side, radius=0.020):
             kd.insert(mw @ v.co, i)
         kd.balance()
     except Exception as _e:
-        print(f"  [tip-end] skipped ({_e})")
+        dbg(f"  [tip-end] skipped ({_e})")
         return
 
     # DIP positions per finger, to derive adaptive lateral gates from spacing.
@@ -2174,7 +2175,7 @@ def resnap_tips_to_finger_end(marker_pos, mesh_obj, arp_side, radius=0.020):
             marker_pos[f"{arp['tip']}_{arp_side}"] = tip + move
             moved += 1
     if moved:
-        print(f"  [tip-end {arp_side}]: re-snapped {moved}/5 tips to finger end")
+        dbg(f"  [tip-end {arp_side}]: re-snapped {moved}/5 tips to finger end")
 
 
 def snap_joints_inside_mesh(marker_pos, mesh_obj, arp_side, max_pull=0.035):
@@ -2266,7 +2267,7 @@ def snap_joints_inside_mesh(marker_pos, mesh_obj, arp_side, max_pull=0.035):
                 marker_pos[k] = cand
                 moved += 1
     if moved:
-        print(f"  [inside {arp_side}]: pulled {moved} joint(s) back inside the mesh")
+        dbg(f"  [inside {arp_side}]: pulled {moved} joint(s) back inside the mesh")
 
 
 # Interior-chain bend (angle between MCP->PIP and PIP->DIP) above which a
@@ -2333,7 +2334,7 @@ def reseat_offaxis_tips(marker_pos, mesh_obj, arp_side, bvh=None):
             if pm.length > 1e-5:
                 bend = math.degrees(pm.angle(d, 0.0))
                 if bend > _CURL_BEND_DEG:
-                    print(f"  [tip-axis {arp_side}] {finger}: interior chain "
+                    dbg(f"  [tip-axis {arp_side}] {finger}: interior chain "
                           f"curled ({bend:.0f}deg > {_CURL_BEND_DEG:.0f}) -- tip "
                           f"follows the curl, left as detected")
                     continue
@@ -2348,24 +2349,24 @@ def reseat_offaxis_tips(marker_pos, mesh_obj, arp_side, bvh=None):
             continue                     # tip already on the chain axis
         hit, _n, _i, _dh = bvh.ray_cast(dip + axis * 0.002, axis, 2.0 * seglen)
         if hit is None:
-            print(f"  [tip-axis {arp_side}] {finger}: off-axis ({_off:.2f}) "
+            dbg(f"  [tip-axis {arp_side}] {finger}: off-axis ({_off:.2f}) "
                   f"but centreline ray found no finger end -- left alone")
             continue
         L = (Vector(hit) - dip).length
         if not (0.75 * seglen <= L <= 1.6 * seglen):
-            print(f"  [tip-axis {arp_side}] {finger}: off-axis ({_off:.2f}) "
+            dbg(f"  [tip-axis {arp_side}] {finger}: off-axis ({_off:.2f}) "
                   f"but exit at {L/seglen:.2f}x of the distal phalange -- "
                   f"left alone (curl / stray hit)")
             continue
         _ndot = _n.normalized().dot(axis) if _n is not None and _n.length > 1e-6 else 1.0
         _seg_ratio = d.length / seglen
-        print(f"  [tip-axis {arp_side}] {finger}: off={_off:.2f} exit={L/seglen:.2f}x "
+        dbg(f"  [tip-axis {arp_side}] {finger}: off={_off:.2f} exit={L/seglen:.2f}x "
               f"cap_ndot={_ndot:.2f} pipdip/seg={_seg_ratio:.2f} "
               f"tip_to_exit={(Vector(hit) - tip).length / seglen:.2f}x")
         marker_pos[f"{arp['tip']}_{arp_side}"] = dip + axis * (L * 0.88)
         moved.append(finger)
     if moved:
-        print(f"  [tip-axis {arp_side}]: re-seated {len(moved)} off-axis "
+        dbg(f"  [tip-axis {arp_side}]: re-seated {len(moved)} off-axis "
               f"tip(s) onto the finger centreline ({', '.join(moved)})")
 
 
@@ -2592,7 +2593,7 @@ def contain_finger_chains(marker_pos, mesh_obj, arp_side, samples=12,
                 marker_pos[k] = pts[i]
             n_chains += 1
     if n_chains:
-        print(f"  [contain {arp_side}]: pulled {n_chains} finger chain(s) "
+        dbg(f"  [contain {arp_side}]: pulled {n_chains} finger chain(s) "
               f"back inside the mesh volume")
 
 
@@ -2736,7 +2737,7 @@ def seat_finger_tips_on_pad(marker_pos, mesh_obj, arp_side,
         marker_pos[f"{arp['tip']}_{arp_side}"] = new_tip
         moved += 1
     if moved:
-        print(f"  [pad {arp_side}]: seated {moved} tips on the finger pad")
+        dbg(f"  [pad {arp_side}]: seated {moved} tips on the finger pad")
 
 
 def center_finger_joints_in_volume(marker_pos, mesh_obj, arp_side,
@@ -2839,7 +2840,7 @@ def center_finger_joints_in_volume(marker_pos, mesh_obj, arp_side,
             pts[i] = marker_pos[chain_keys[i]]
             moved += 1
     if moved:
-        print(f"  [depth {arp_side}]: centred {moved} joints into finger volume")
+        dbg(f"  [depth {arp_side}]: centred {moved} joints into finger volume")
 
 
 def enforce_finger_chain_order(marker_pos, arp_side, gap_frac=0.06, min_gap=0.003):
@@ -2890,7 +2891,7 @@ def enforce_finger_chain_order(marker_pos, arp_side, gap_frac=0.06, min_gap=0.00
                 moved += 1
             prev_t = new_t
     if moved:
-        print(f"  [order {arp_side}]: re-ordered {moved} joints to MCP<PIP<DIP<TIP")
+        dbg(f"  [order {arp_side}]: re-ordered {moved} joints to MCP<PIP<DIP<TIP")
 
 
 def fix_thumb_base(marker_pos, arp_side, max_ratio=1.7, target_ratio=1.3):
@@ -2925,7 +2926,7 @@ def fix_thumb_base(marker_pos, arp_side, max_ratio=1.7, target_ratio=1.3):
         return
     if cur_len > max_ratio * phal_len:
         marker_pos[f"{arp['phal1']}_{arp_side}"] = mcp + (cur / cur_len) * (target_ratio * phal_len)
-        print(f"  [thumb {arp_side}]: base clamped {cur_len/phal_len:.2f}->{target_ratio:.2f}x phalanx "
+        dbg(f"  [thumb {arp_side}]: base clamped {cur_len/phal_len:.2f}->{target_ratio:.2f}x phalanx "
               f"(was drifting toward wrist)")
 
 
@@ -3037,7 +3038,7 @@ def straighten_fingers_lateral(marker_pos, arp_side, clamp=0.30):
             marker_pos[key] = J - lat_n * lateral
             moved += 1
     if moved:
-        print(f"  [straight {arp_side}]: aligned {moved} joints laterally")
+        dbg(f"  [straight {arp_side}]: aligned {moved} joints laterally")
 
 
 def finger_quality_report(marker_pos, arp_side):
@@ -3258,7 +3259,7 @@ def separate_collapsed_tips(marker_pos, arp_side, mesh_obj=None, collapse_dist=0
         # whole-hand detection failed, e.g. the camera clipped the hand) -- rebuilding
         # would only move the tip somewhere else wrong, so leave it for the user.
         if dev > chain_len * 1.3:
-            print(f"  [decollapse {arp_side}] {f}: dev={dev*1000:.0f}mm >> "
+            dbg(f"  [decollapse {arp_side}] {f}: dev={dev*1000:.0f}mm >> "
                   f"len={chain_len*1000:.0f}mm -- detection unreliable, skipping")
             continue
         cum = 0.0
@@ -3288,13 +3289,13 @@ def separate_collapsed_tips(marker_pos, arp_side, mesh_obj=None, collapse_dist=0
         # straight-line guess is floating in the gap/air (the parallel assumption
         # failed for a splayed pinky) -- don't apply it; leave the finger as-is.
         if not tip_ok:
-            print(f"  [decollapse {arp_side}] {f}: rebuilt tip found no finger volume "
+            dbg(f"  [decollapse {arp_side}] {f}: rebuilt tip found no finger volume "
                   f"(<= {_sr*2000:.0f}mm) -- leaving finger as-is")
             continue
         for p, pos in seated.items():
             marker_pos[_key(f, p)] = pos
         moved += 1
-        print(f"  [decollapse {arp_side}] rebuilt {f}: dev={dev*1000:.0f}mm "
+        dbg(f"  [decollapse {arp_side}] rebuilt {f}: dev={dev*1000:.0f}mm "
               f"len={chain_len*1000:.0f}mm along trusted dir")
 
     if moved:
@@ -3303,7 +3304,7 @@ def separate_collapsed_tips(marker_pos, arp_side, mesh_obj=None, collapse_dist=0
             f"{a[0]}{b[0]}={(_g[a]-_g[b]).length*1000:.0f}mm"
             for a, b in (("middle", "ring"), ("ring", "pinky"))
             if _g[a] and _g[b])
-        print(f"  [decollapse {arp_side}]: rebuilt {moved} collapsed finger(s)  ({gaps})")
+        dbg(f"  [decollapse {arp_side}]: rebuilt {moved} collapsed finger(s)  ({gaps})")
     return moved
 
 
@@ -3422,14 +3423,14 @@ def enforce_final_symmetry(marker_pos, mesh_obj, hw_l, hw_r):
                 marker_pos[kl] = _mir(marker_pos[kr])
             n_copy += 1
             _recentre_mirrored(marker_pos, bvh, finger, "L")
-            print(f"  [symmetry-final] {finger}: L {bad_l*1000:.0f}mm outside "
+            dbg(f"  [symmetry-final] {finger}: L {bad_l*1000:.0f}mm outside "
                   f"vs R {bad_r*1000:.0f}mm -- mirrored R->L")
         elif bad_r - bad_l > 0.004:
             for kl, kr in pairs:
                 marker_pos[kr] = _mir(marker_pos[kl])
             n_copy += 1
             _recentre_mirrored(marker_pos, bvh, finger, "R")
-            print(f"  [symmetry-final] {finger}: R {bad_r*1000:.0f}mm outside "
+            dbg(f"  [symmetry-final] {finger}: R {bad_r*1000:.0f}mm outside "
                   f"vs L {bad_l*1000:.0f}mm -- mirrored L->R")
         else:
             for kl, kr in pairs:
@@ -3438,7 +3439,7 @@ def enforce_final_symmetry(marker_pos, mesh_obj, hw_l, hw_r):
                 marker_pos[kr] = _mir(m)
             n_avg += 1
     if n_avg or n_copy:
-        print(f"  [symmetry-final]: {n_avg} finger(s) mirror-averaged, "
+        dbg(f"  [symmetry-final]: {n_avg} finger(s) mirror-averaged, "
               f"{n_copy} mirrored from the better-contained side")
 
 
@@ -3496,12 +3497,12 @@ def enforce_finger_symmetry(marker_pos, hw_l, hw_r):
         if c_r and not c_l:
             for kl, kr in pairs:
                 marker_pos[kr] = _mir(marker_pos[kl]); n_copy += 1
-            print(f"  [symmetry] {finger}: R collapsed - mirrored L->R")
+            dbg(f"  [symmetry] {finger}: R collapsed - mirrored L->R")
             continue
         if c_l and not c_r:
             for kl, kr in pairs:
                 marker_pos[kl] = _mir(marker_pos[kr]); n_copy += 1
-            print(f"  [symmetry] {finger}: L collapsed - mirrored R->L")
+            dbg(f"  [symmetry] {finger}: L collapsed - mirrored R->L")
             continue
 
         max_gap = max((marker_pos[kl] - _mir(marker_pos[kr])).length
@@ -3533,11 +3534,11 @@ def enforce_finger_symmetry(marker_pos, hw_l, hw_r):
                 else:
                     marker_pos[kl] = _mir(marker_pos[kr])
                 n_copy += 1
-            print(f"  [symmetry] {finger}: gap {max_gap*1000:.0f}mm - "
+            dbg(f"  [symmetry] {finger}: gap {max_gap*1000:.0f}mm - "
                   f"mirrored {'L->R' if use_left else 'R->L'} "
                   f"(L={len_l*1000:.0f}mm R={len_r*1000:.0f}mm)")
 
-    print(f"[symmetry] {n_avg} joints averaged, {n_copy} joints mirrored "
+    dbg(f"[symmetry] {n_avg} joints averaged, {n_copy} joints mirrored "
           f"around X={cx:.3f}m")
 
 
@@ -3645,20 +3646,20 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
             finger_lens[finger] = flen
             if flen >= min_flen:
                 long_fingers += 1
-        print(f"  _has_spread [{arp_side}]: {long_fingers}/5 long - "
+        dbg(f"  _has_spread [{arp_side}]: {long_fingers}/5 long - "
               f"thumb={finger_lens.get('thumb',0)*1000:.1f}mm  "
               f"index={finger_lens.get('index',0)*1000:.1f}mm  "
               f"middle={finger_lens.get('middle',0)*1000:.1f}mm  "
               f"ring={finger_lens.get('ring',0)*1000:.1f}mm  "
               f"pinky={finger_lens.get('pinky',0)*1000:.1f}mm")
         if long_fingers < min_count:
-            print(f"  [{arp_side}] _has_spread: only {long_fingers}/5 fingers long enough  -- palm bias")
+            dbg(f"  [{arp_side}] _has_spread: only {long_fingers}/5 fingers long enough  -- palm bias")
             return False
         # Check 3: at least 4/5 tips must be >=20% arm_len from the wrist.
         min_dist = arm_len * 0.20
         far_tips = sum(1 for t in tips if (t - hw_v).length >= min_dist)
         if far_tips < 4:
-            print(f"  [{arp_side}] _has_spread: only {far_tips}/5 tips far from wrist  -- rejecting")
+            dbg(f"  [{arp_side}] _has_spread: only {far_tips}/5 tips far from wrist  -- rejecting")
             return False
         return True
 
@@ -3692,10 +3693,10 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
             # of whether the chain was accepted as primary.
             lvt_raw = result if (result and len(result) >= 16) else None
             if result and len(result) >= 16 and _has_spread(result):
-                print(f"Tip [{arp_side}]: accepted as primary ({len(result)} markers)  [pipeline=LVT]")
+                dbg(f"Tip [{arp_side}]: accepted as primary ({len(result)} markers)  [pipeline=LVT]")
                 lvt_accepted = result   # store but keep going so landmark diagnostics run
             else:
-                print(f"Tip [{arp_side}]: rejected  -- trying 20-landmark fallback")
+                dbg(f"Tip [{arp_side}]: rejected  -- trying 20-landmark fallback")
 
         # 2. 20-landmark model  -- always run for diagnostics so we can see MCP->TIP lengths
         if is_landmark_available():
@@ -3704,7 +3705,7 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                                              orbit_scale=lvt_hand_scale,
                                              orbit_fwd=lvt_fwd)
             if result and len(result) >= 16 and _has_spread(result, for_onnx=True):
-                print(f"Landmark [{arp_side}]: accepted ({len(result)} markers)  [pipeline=ONNX]")
+                dbg(f"Landmark [{arp_side}]: accepted ({len(result)} markers)  [pipeline=ONNX]")
                 # Anchor landmark TIPs with LVT's mesh-snapped positions when available.
                 # LVT tips are more accurate for endpoints; landmark provides the
                 # intermediate PIP/DIP joints. Skip any LVT tip that is degenerate
@@ -3744,7 +3745,7 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                             d_lm  = (lm_tips[i] - lm_tips[j]).length
                             if d_lvt < 0.016 and d_lm > d_lvt + 0.010:
                                 if good[i] or good[j]:
-                                    print(f"  [{arp_side}] {_finger_order[i]}/{_finger_order[j]} "
+                                    dbg(f"  [{arp_side}] {_finger_order[i]}/{_finger_order[j]} "
                                           f"LVT tips collapsed ({d_lvt*1000:.0f}mm vs ONNX "
                                           f"{d_lm*1000:.0f}mm) -- keeping ONNX for both")
                                 good[i] = False
@@ -3756,7 +3757,7 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                         if g:
                             result[k] = t
                             replaced += 1
-                    print(f"  [{arp_side}] anchored {replaced}/5 tips from LVT")
+                    dbg(f"  [{arp_side}] anchored {replaced}/5 tips from LVT")
 
                     _post_bvh = _build_bvh(mesh_obj)
 
@@ -3786,13 +3787,13 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                         lvt_len  = ((lvt_tip - lvt_mcp).length
                                     if lvt_tip is not None else 0.0)
                         if lvt_len < max(0.03, onnx_len * 0.60):
-                            print(f"  [{arp_side}] {f} MCP: LVT chain "
+                            dbg(f"  [{arp_side}] {f} MCP: LVT chain "
                                   f"{lvt_len*1000:.0f}mm vs ONNX "
                                   f"{onnx_len*1000:.0f}mm -- keeping ONNX MCP")
                             continue
                         if (lvt_mcp - hw).length < (lvt_mcp - result[tip_k]).length:
                             result[mcp_key] = lvt_mcp
-                            print(f"  [{arp_side}] {f} MCP -> LVT")
+                            dbg(f"  [{arp_side}] {f} MCP -> LVT")
 
                     # -- BVH centre TIPs and MCPs --------------------------------
                     for i, (f, g) in enumerate(zip(_finger_order, good)):
@@ -3901,7 +3902,7 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                                     if pk in result:
                                         result[pk] = mcp.lerp(lt, _frac)
                     if _anch:
-                        print(f"  [{arp_side}] anchored {_anch}/5 tips from LVT (chain rejected)")
+                        dbg(f"  [{arp_side}] anchored {_anch}/5 tips from LVT (chain rejected)")
 
                 # -- Drifted-tip rescue ----------------------------------------
                 # The LVT tip-model (1.7px) is the most reliable tip detector. If the
@@ -3933,15 +3934,15 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                         # LVT keeps the tip apart (>14mm) AND more separated than ONNX
                         # does (>=4mm better) -> the ONNX tip drifted; use the LVT tip.
                         take = d_lvt > 0.014 and (d_lvt - d_onnx) > 0.004
-                        print(f"  [{arp_side}] {f} tip: onnx_gap={d_onnx*1000:.0f}mm "
+                        dbg(f"  [{arp_side}] {f} tip: onnx_gap={d_onnx*1000:.0f}mm "
                               f"lvt_gap={d_lvt*1000:.0f}mm{'  -> LVT' if take else ''}")
                         if take:
                             result[_tk[f]] = lt
                             _rescued += 1
                     if _rescued:
-                        print(f"  [{arp_side}] rescued {_rescued} drifted tip(s) from LVT")
+                        dbg(f"  [{arp_side}] rescued {_rescued} drifted tip(s) from LVT")
                 return result
-            print(f"Landmark [{arp_side}]: rejected  -- per-finger merge")
+            dbg(f"Landmark [{arp_side}]: rejected  -- per-finger merge")
 
         # -- Per-finger merge -------------------------------------------------
         # Neither source passed _has_spread as a whole, but each may have several
@@ -3970,12 +3971,12 @@ def detect_fingers_hybrid(mesh_obj, hw, ew, temp_dir, arp_side, center_radius=0.
                     for k in keys:
                         if k in mesh_res:
                             merged[k] = mesh_res[k]
-            print(f"[{arp_side}]: per-finger merge - {len(filled)}/5 from AI "
+            dbg(f"[{arp_side}]: per-finger merge - {len(filled)}/5 from AI "
                   f"({'+'.join(sorted(filled)) or 'none'}), "
                   f"{len(missing)}/5 geometric")
             if merged:
                 return merged
 
     # 3. Mesh-aware fallback: find actual fingertip vertices, derive phalanges
-    print(f"[{arp_side}]: mesh-aware fallback")
+    dbg(f"[{arp_side}]: mesh-aware fallback")
     return _place_fingers_from_mesh(mesh_obj, hw, ew, arp_side, per_view_tips, per_view_cameras)

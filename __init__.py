@@ -29,6 +29,13 @@ bl_info = {
 _ADDON_VERSION = bl_info["version"]
 
 import bpy
+import bpy.utils.previews  # `bpy.utils.previews` is a submodule, not auto-loaded
+                            # by `import bpy` alone — normally something else in
+                            # Blender's own startup pulls it in first, but that
+                            # isn't guaranteed on every Blender version/launch
+                            # order (broke register() on 5.2: "module 'bpy.utils'
+                            # has no attribute 'previews'"). Import it explicitly
+                            # so register() below never depends on load order.
 import os
 
 # ── Submodule imports ─────────────────────────────────────────────────────────

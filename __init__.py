@@ -154,7 +154,14 @@ from .pipeline      import draw_skinning_tab
 from .weight_tools  import draw_weights_tab, draw_visualization_section
 from .fan_bones     import draw_fan_bones_section
 from .game_export   import AUTORIG_OT_ExportGame, draw_game_export_section
-from .retarget      import (AutoRigRetargetProps, AUTORIG_OT_RetargetAnim,
+from .retarget      import (AutoRigRetargetMapItem, AutoRigRetargetProps,
+                            AUTORIG_OT_RetargetAnim, AUTORIG_UL_RetargetMap,
+                            AUTORIG_OT_RetargetAutoMap,
+                            AUTORIG_OT_RetargetMapAdd,
+                            AUTORIG_OT_RetargetMapRemove,
+                            AUTORIG_OT_RetargetMapClear,
+                            AUTORIG_OT_RetargetMapSave,
+                            AUTORIG_OT_RetargetMapLoad,
                             draw_retarget_section)
 from .utils         import get_icon
 # DEV-ONLY data-generation tools: registered only when the dev/ folder exists
@@ -321,9 +328,17 @@ CLASSES = (
     FANBONE_OT_remove,
     # Game export
     AUTORIG_OT_ExportGame,
-    # Animation retarget (PropertyGroup before the operator that uses it)
+    # Animation retarget (map item PG before the props PG that collects it)
+    AutoRigRetargetMapItem,
     AutoRigRetargetProps,
     AUTORIG_OT_RetargetAnim,
+    AUTORIG_UL_RetargetMap,
+    AUTORIG_OT_RetargetAutoMap,
+    AUTORIG_OT_RetargetMapAdd,
+    AUTORIG_OT_RetargetMapRemove,
+    AUTORIG_OT_RetargetMapClear,
+    AUTORIG_OT_RetargetMapSave,
+    AUTORIG_OT_RetargetMapLoad,
     # Custom rig preserve (PropertyGroup before operators)
     AutoRigPreserveProps,
     AUTORIG_OT_PreserveBackup,

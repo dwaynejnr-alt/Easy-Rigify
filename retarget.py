@@ -167,15 +167,47 @@ def build_mapping(src, rig):
                     used_tgt.add(tgt)
                 break                          # first matching rule only
 
-    # parents-first: a control must be keyed after every ancestor control, so
-    # sort by bone depth in the target hierarchy
+    return order_mapping(rig, mapping)
+
+
+def order_mapping(rig, mapping):
+    """Parents-first: a control must be keyed after every ancestor control, so
+    sort by bone depth in the target hierarchy."""
     def depth(tname):
         d, b = 0, rig.data.bones[tname]
         while b.parent:
             d, b = d + 1, b.parent
         return d
-    mapping.sort(key=lambda m: depth(m[1]))
-    return mapping
+    return sorted(mapping, key=lambda m: depth(m[1]))
+
+
+def mapping_from_pairs(rig, pairs):
+    """[(source, target)] -> validated, ordered [(source, target, use_loc)].
+    Unknown target names are dropped; the 'torso' pair carries location."""
+    seen = set()
+    out = []
+    for s, t in pairs:
+        if not s or not t or t not in rig.pose.bones or t in seen:
+            continue
+        out.append((s, t, t == "torso"))
+        seen.add(t)
+    return order_mapping(rig, out)
+
+
+def save_mapping_json(filepath, pairs):
+    import json
+    data = {"version": 1, "pairs": [{"source": s, "target": t}
+                                    for s, t in pairs]}
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def load_mapping_json(filepath):
+    import json
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return [(p.get("source", ""), p.get("target", ""))
+            for p in data.get("pairs", [])]
 
 
 def _is_generated_rigify(obj):
@@ -487,6 +519,11 @@ def _poll_source(self, obj):
     return obj.type == 'ARMATURE' and not _is_generated_rigify(obj)
 
 
+class AutoRigRetargetMapItem(bpy.types.PropertyGroup):
+    source: bpy.props.StringProperty(name="Source")
+    target: bpy.props.StringProperty(name="Target")
+
+
 class AutoRigRetargetProps(bpy.types.PropertyGroup):
     source: bpy.props.PointerProperty(
         name="Source",
@@ -494,6 +531,15 @@ class AutoRigRetargetProps(bpy.types.PropertyGroup):
                     "FBX/BVH clip first, then pick its armature here)",
         type=bpy.types.Object,
         poll=_poll_source,
+    )
+    map_items: bpy.props.CollectionProperty(type=AutoRigRetargetMapItem)
+    map_index: bpy.props.IntProperty(default=0)
+    show_map: bpy.props.BoolProperty(
+        name="Edit Bone Mapping",
+        description="Show and edit the source-to-control bone mapping. When "
+                    "the list is filled, Retarget uses it instead of the "
+                    "automatic mapping",
+        default=False,
     )
     in_place: bpy.props.BoolProperty(
         name="In Place",
@@ -537,7 +583,11 @@ class AUTORIG_OT_RetargetAnim(bpy.types.Operator):
             prev_mode = context.mode
             bpy.ops.object.mode_set(mode='OBJECT')
 
-        mapping = build_mapping(src, rig)
+        if len(props.map_items):
+            mapping = mapping_from_pairs(
+                rig, [(it.source, it.target) for it in props.map_items])
+        else:
+            mapping = build_mapping(src, rig)
         ok, msg, _ = run_retarget(context, src, rig, mapping,
                                   in_place=props.in_place,
                                   align_rests=props.align_rests)
@@ -545,6 +595,142 @@ class AUTORIG_OT_RetargetAnim(bpy.types.Operator):
             bpy.ops.object.mode_set(mode='POSE')
         self.report({'INFO'} if ok else {'ERROR'}, msg)
         return {'FINISHED'} if ok else {'CANCELLED'}
+
+
+class AUTORIG_UL_RetargetMap(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data,
+                  active_prop, index):
+        props = context.scene.autorig_retarget
+        row = layout.row(align=True)
+        if props.source and props.source.data:
+            row.prop_search(item, "source", props.source.data, "bones",
+                            text="", icon='BONE_DATA')
+        else:
+            row.prop(item, "source", text="", icon='BONE_DATA')
+        rig = find_target_rig(context)
+        if rig:
+            row.prop_search(item, "target", rig.pose, "bones", text="",
+                            icon='ARMATURE_DATA')
+        else:
+            row.prop(item, "target", text="", icon='ARMATURE_DATA')
+
+
+class AUTORIG_OT_RetargetAutoMap(bpy.types.Operator):
+    """Fill the mapping list with the automatic (preset/fuzzy) bone mapping"""
+    bl_idname = "autorig.retarget_auto_map"
+    bl_label = "Auto-Map Bones"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.autorig_retarget
+        rig = find_target_rig(context)
+        if props.source is None or rig is None:
+            self.report({'ERROR'}, "Pick a source armature first.")
+            return {'CANCELLED'}
+        props.map_items.clear()
+        mapping = build_mapping(props.source, rig)
+        for s, t, _loc in mapping:
+            it = props.map_items.add()
+            it.source, it.target = s, t
+        self.report({'INFO'}, f"Mapped {len(mapping)} bones.")
+        return {'FINISHED'}
+
+
+class AUTORIG_OT_RetargetMapAdd(bpy.types.Operator):
+    """Add an empty mapping row"""
+    bl_idname = "autorig.retarget_map_add"
+    bl_label = "Add Mapping Row"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.autorig_retarget
+        props.map_items.add()
+        props.map_index = len(props.map_items) - 1
+        return {'FINISHED'}
+
+
+class AUTORIG_OT_RetargetMapRemove(bpy.types.Operator):
+    """Remove the selected mapping row"""
+    bl_idname = "autorig.retarget_map_remove"
+    bl_label = "Remove Mapping Row"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.autorig_retarget
+        if 0 <= props.map_index < len(props.map_items):
+            props.map_items.remove(props.map_index)
+            props.map_index = min(props.map_index,
+                                  len(props.map_items) - 1)
+        return {'FINISHED'}
+
+
+class AUTORIG_OT_RetargetMapClear(bpy.types.Operator):
+    """Clear the mapping list (Retarget goes back to automatic mapping)"""
+    bl_idname = "autorig.retarget_map_clear"
+    bl_label = "Clear Mapping"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        context.scene.autorig_retarget.map_items.clear()
+        return {'FINISHED'}
+
+
+class AUTORIG_OT_RetargetMapSave(bpy.types.Operator):
+    """Save the mapping list to a JSON file (reuse it across clips that share
+    the same source skeleton)"""
+    bl_idname = "autorig.retarget_map_save"
+    bl_label = "Save Mapping"
+
+    filepath: bpy.props.StringProperty(subtype='FILE_PATH')
+    filter_glob: bpy.props.StringProperty(default="*.json", options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        if not context.scene.autorig_retarget.map_items:
+            self.report({'ERROR'}, "Mapping list is empty.")
+            return {'CANCELLED'}
+        if not self.filepath:
+            self.filepath = "retarget_map.json"
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        props = context.scene.autorig_retarget
+        path = bpy.path.ensure_ext(self.filepath, ".json")
+        try:
+            save_mapping_json(path, [(it.source, it.target)
+                                     for it in props.map_items])
+        except OSError as e:
+            self.report({'ERROR'}, f"Save failed: {e}")
+            return {'CANCELLED'}
+        self.report({'INFO'}, f"Saved {len(props.map_items)} pairs.")
+        return {'FINISHED'}
+
+
+class AUTORIG_OT_RetargetMapLoad(bpy.types.Operator):
+    """Load a mapping list from a JSON file"""
+    bl_idname = "autorig.retarget_map_load"
+    bl_label = "Load Mapping"
+
+    filepath: bpy.props.StringProperty(subtype='FILE_PATH')
+    filter_glob: bpy.props.StringProperty(default="*.json", options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        props = context.scene.autorig_retarget
+        try:
+            pairs = load_mapping_json(self.filepath)
+        except (OSError, ValueError) as e:
+            self.report({'ERROR'}, f"Load failed: {e}")
+            return {'CANCELLED'}
+        props.map_items.clear()
+        for s, t in pairs:
+            it = props.map_items.add()
+            it.source, it.target = s, t
+        self.report({'INFO'}, f"Loaded {len(pairs)} pairs.")
+        return {'FINISHED'}
 
 
 def draw_retarget_section(layout, context):
@@ -574,4 +760,25 @@ def draw_retarget_section(layout, context):
               icon='ACTION')
     col.prop(props, "align_rests")
     col.prop(props, "in_place")
+
+    box.prop(props, "show_map", icon='TRIA_DOWN' if props.show_map
+             else 'TRIA_RIGHT', emboss=False)
+    if props.show_map:
+        mcol = box.column(align=True)
+        r = mcol.row(align=True)
+        r.operator("autorig.retarget_auto_map", icon='SHADERFX')
+        r.operator("autorig.retarget_map_clear", text="", icon='X')
+        mcol.template_list("AUTORIG_UL_RetargetMap", "", props, "map_items",
+                           props, "map_index", rows=6)
+        r = mcol.row(align=True)
+        r.operator("autorig.retarget_map_add", text="", icon='ADD')
+        r.operator("autorig.retarget_map_remove", text="", icon='REMOVE')
+        r.separator()
+        r.operator("autorig.retarget_map_save", text="Save", icon='EXPORT')
+        r.operator("autorig.retarget_map_load", text="Load", icon='IMPORT')
+        if len(props.map_items):
+            mcol.label(text=f"Retarget will use these {len(props.map_items)} "
+                            "pairs", icon='INFO')
+
+    col = box.column()
     col.operator("autorig.retarget_anim", icon='PLAY')

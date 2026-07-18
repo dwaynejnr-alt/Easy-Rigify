@@ -359,4 +359,30 @@ for need in ("torso", "shoulder.L", "upper_arm_fk.L", "forearm_fk.L",
 ok(f"fuzzy mapping resolved Character Creator names (infix _L_/_R_): "
    f"{len(m3)} pairs, arms AND legs both sides")
 
+# ── 6. custom-mapping plumbing: pairs -> validated/ordered, JSON round-trip ──
+import os, tempfile
+pairs = [(s, t) for s, t, _ in mapping]           # from the Mixamo mapping
+pairs.append(("bogus_bone", "no_such_control"))   # must be dropped
+m4 = rt.mapping_from_pairs(rig, pairs)
+if len(m4) != len(mapping):
+    fail(f"mapping_from_pairs: expected {len(mapping)} valid pairs, got {len(m4)}")
+if not any(loc for _, t, loc in m4 if t == "torso"):
+    fail("mapping_from_pairs lost the torso location flag")
+depths = []
+for _, t, _ in m4:
+    d, b = 0, rig.data.bones[t]
+    while b.parent:
+        d, b = d + 1, b.parent
+    depths.append(d)
+if depths != sorted(depths):
+    fail("mapping_from_pairs not parents-first ordered")
+tmp = os.path.join(tempfile.gettempdir(), "er_test_map.json")
+rt.save_mapping_json(tmp, pairs[:-1])
+loaded = rt.load_mapping_json(tmp)
+os.remove(tmp)
+if loaded != pairs[:-1]:
+    fail("JSON mapping round-trip mismatch")
+ok(f"custom mapping: validation, torso flag, ordering, JSON round-trip "
+   f"({len(loaded)} pairs)")
+
 print("\nALL CHECKS PASSED")

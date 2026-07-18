@@ -101,26 +101,24 @@ def _keep_deform_bones(context, arm):
 
 def _merge_vgroup(mesh, base, seg):
     """base_weight += seg_weight per vertex, then delete the seg group. Lossless:
-    the two groups partition one limb's influence, so the sum rebuilds it and each
-    vertex's total (already 1.0) is unchanged."""
+    the merged groups partition the influence, so the sum rebuilds it and each
+    vertex's total (already 1.0) is unchanged.
+
+    Uses 'ADD' write mode: it accumulates onto the existing weight AND creates
+    the membership when the vertex is not yet in the base group. ('REPLACE'
+    silently drops non-members — invisible on limb twist merges, where the two
+    segments always overlap, but it LOSES weight when folding face bones into
+    the head, whose group most face vertices never belonged to.)"""
     vg_seg = mesh.vertex_groups.get(seg)
     if vg_seg is None:
         return
     vg_base = mesh.vertex_groups.get(base) or mesh.vertex_groups.new(name=base)
     seg_idx = vg_seg.index
     for v in mesh.data.vertices:
-        w_seg = 0.0
-        w_base = 0.0
-        have_base = False
         for g in v.groups:
-            if g.group == seg_idx:
-                w_seg = g.weight
-            elif g.group == vg_base.index:
-                w_base = g.weight
-                have_base = True
-        if w_seg > 0.0 or have_base:
-            if w_seg > 0.0:
-                vg_base.add([v.index], w_base + w_seg, 'REPLACE')
+            if g.group == seg_idx and g.weight > 0.0:
+                vg_base.add([v.index], g.weight, 'ADD')
+                break
     mesh.vertex_groups.remove(vg_seg)
 
 
@@ -158,6 +156,50 @@ def _merge_segments(context, arm, meshes):
                 if vg:
                     vg.name = base
     return merged
+
+
+def _face_deform_bones(arm):
+    """Names of deform bones belonging to the face rig, identified on the
+    FULL hierarchy (before the non-deform bones are stripped): a face deform
+    bone's ancestor chain passes through Rigify's face root. Must run before
+    _keep_deform_bones — extraction orphans these bones, so hierarchy-based
+    identification is impossible afterwards."""
+    out = set()
+    for b in arm.data.bones:
+        if not b.use_deform:
+            continue
+        p = b.parent
+        while p is not None:
+            if p.name in ("ORG-face", "face"):
+                out.add(b.name)
+                break
+            p = p.parent
+    return out
+
+
+def _strip_face_bones(context, arm, meshes, face_set):
+    """Remove the face rig's deform bones (60+ on a full face metarig) and
+    fold each one's weights into the head bone, so the face follows the head
+    rigidly. Per-vertex totals stay 1.0 (same argument as the limb merge),
+    and separate eye/teeth/tongue meshes end up fully head-weighted. Runs
+    after extraction, before renaming (DEF- names). Returns bones stripped."""
+    chain = _spine_chain(arm)
+    if not chain or not face_set:
+        return 0
+    head_name = chain[-1]
+    doomed = [bn for bn in face_set
+              if bn in arm.data.bones and bn != head_name]
+    for m in meshes:
+        for bn in doomed:
+            _merge_vgroup(m, head_name, bn)
+    context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode='EDIT')
+    for bn in doomed:
+        eb = arm.data.edit_bones.get(bn)
+        if eb is not None:
+            arm.data.edit_bones.remove(eb)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    return len(doomed)
 
 
 def _add_root(context, arm):
@@ -352,7 +394,8 @@ _FBX_SETTINGS = {
 
 def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
                      apply_modifiers=False, add_leaf_bones=False,
-                     include_anim=False, anim_simplify=1.0):
+                     include_anim=False, anim_simplify=1.0,
+                     strip_face=False):
     """Full pipeline: validate -> clean skeleton -> merge -> root -> rename ->
     [bake animation] -> FBX. Returns (ok, message, stats).
 
@@ -386,10 +429,12 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
         except Exception:
             pass
 
-    # 1. clean skeleton (duplicate + DEF-only)
+    # 1. clean skeleton (duplicate + DEF-only). The face set must be read off
+    # the FULL hierarchy — extraction orphans the face deform bones.
     clean = _duplicate(context, rig)
     clean.name = "GAME_SKELETON"
     clean.animation_data_clear()
+    face_set = _face_deform_bones(clean) if strip_face else set()
     _freeze_to_rest(context, clean)      # remove constraints BEFORE stripping bones
     _keep_deform_bones(context, clean)
 
@@ -402,6 +447,11 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
                 mod.object = clean
         dm.parent = clean
         dup_meshes.append(dm)
+
+    # 2b. optionally drop the face rig (weights fold into the head)
+    n_face = 0
+    if strip_face:
+        n_face = _strip_face_bones(context, clean, dup_meshes, face_set)
 
     # 3. merge twist segments, 4. root, 5. rename to the target convention
     n_merged = _merge_segments(context, clean, dup_meshes)
@@ -419,7 +469,8 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
             return False, f"Animation bake failed: {e}", {}
 
     stats = {"bones": len(clean.data.bones), "merged": n_merged,
-             "meshes": len(dup_meshes), "frames": n_frames}
+             "meshes": len(dup_meshes), "frames": n_frames,
+             "face_stripped": n_face}
 
     # 6. export selection
     for o in context.selected_objects:
@@ -474,8 +525,9 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
         f"{stats['frames']} anim frames -> {filepath}")
     anim_part = (f", {n_frames} anim frames" if n_frames > 0
                  else f", no animation ({anim_note})" if include_anim else "")
+    face_part = f", {n_face} face bones stripped" if n_face else ""
     return True, (f"Exported {stats['bones']}-bone {target} skeleton "
-                  f"({stats['meshes']} mesh{anim_part})"), stats
+                  f"({stats['meshes']} mesh{anim_part}{face_part})"), stats
 
 
 def _cleanup(clean, dup_meshes):
@@ -528,6 +580,14 @@ class AUTORIG_OT_ExportGame(bpy.types.Operator):
                     "bone length",
         default=False,
     )
+    strip_face: bpy.props.BoolProperty(
+        name="Strip Face Bones",
+        description="Remove the face rig from the game skeleton (60+ bones on "
+                    "a full face rig) and fold its weights into the head, so "
+                    "the face follows the head rigidly. Most game characters "
+                    "don't need bone-driven faces; use blend shapes instead",
+        default=False,
+    )
     include_anim: bpy.props.BoolProperty(
         name="Include Animation",
         description="Bake the rig's current action onto the game skeleton and "
@@ -558,7 +618,8 @@ class AUTORIG_OT_ExportGame(bpy.types.Operator):
             context, bpy.path.ensure_ext(self.filepath, ".fbx"),
             target=self.target, apply_modifiers=self.apply_modifiers,
             add_leaf_bones=self.add_leaf_bones,
-            include_anim=self.include_anim, anim_simplify=self.anim_simplify)
+            include_anim=self.include_anim, anim_simplify=self.anim_simplify,
+            strip_face=self.strip_face)
         self.report({'INFO'} if ok else {'ERROR'}, msg)
         return {'FINISHED'} if ok else {'CANCELLED'}
 

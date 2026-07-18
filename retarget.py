@@ -279,6 +279,16 @@ _IK_SNAP = (
     ("toe_ik.L", "toe_fk.L"),   ("toe_ik.R", "toe_fk.R"),
 )
 
+# Pole targets, keyed per frame from the FK chain's bend so rigs with the
+# pole-vector toggle ON solve the knee/elbow in the clip's plane.
+# (pole bone, upper FK, mid FK, lower FK)
+_POLE_SNAP = (
+    ("thigh_ik_target.L", "thigh_fk.L", "shin_fk.L", "foot_fk.L"),
+    ("thigh_ik_target.R", "thigh_fk.R", "shin_fk.R", "foot_fk.R"),
+    ("upper_arm_ik_target.L", "upper_arm_fk.L", "forearm_fk.L", "hand_fk.L"),
+    ("upper_arm_ik_target.R", "upper_arm_fk.R", "forearm_fk.R", "hand_fk.R"),
+)
+
 
 def _facing_correction(src, rig, mapping):
     """Yaw rotation carrying the source character's facing onto the target's.
@@ -424,6 +434,7 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
     wm.progress_begin(f_start, f_end)
     inv_rig = rig.matrix_world.inverted()
     prev_q = {}
+    prev_bend = {}
     try:
         for frame in range(f_start, f_end + 1):
             context.scene.frame_set(frame)
@@ -497,6 +508,34 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
                     prev_q[ik_name] = q
                 pb.keyframe_insert("location", frame=frame)
                 _key_rotation(pb, frame)
+
+            # pole targets: knee/elbow position pushed along the chain's bend
+            # direction. When the limb is straight this frame, the bend is
+            # ill-defined — reuse the last good direction, else the joint's
+            # forward axis (-Z of the mid bone under this addon's roll
+            # convention).
+            for pole, up_fk, mid_fk, low_fk in _POLE_SNAP:
+                pb = rig.pose.bones.get(pole)
+                if pb is None or any(b not in rig.pose.bones
+                                     for b in (up_fk, mid_fk, low_fk)):
+                    continue
+                hip = rig.pose.bones[up_fk].matrix.translation
+                knee = rig.pose.bones[mid_fk].matrix.translation
+                ankle = rig.pose.bones[low_fk].matrix.translation
+                bend = knee - (hip + ankle) * 0.5
+                if bend.length > 1e-5:
+                    bend = bend.normalized()
+                    prev_bend[pole] = bend.copy()
+                elif pole in prev_bend:
+                    bend = prev_bend[pole]
+                else:
+                    bend = -(rig.pose.bones[mid_fk].matrix.to_3x3()
+                             @ Vector((0.0, 0.0, 1.0))).normalized()
+                dist = ((knee - hip).length + (ankle - knee).length) * 0.5
+                M = pb.matrix.copy()
+                M.translation = knee + bend * dist
+                pb.matrix = M
+                pb.keyframe_insert("location", frame=frame)
     finally:
         wm.progress_end()
         context.scene.frame_set(prev_frame)

@@ -195,14 +195,27 @@ Verified headless (Blender 4.5, full face metarig, 160 deform bones): baked
 frames; root motion baked; original rig's action untouched; FBX reimports with
 the action. Test: `dev/test_anim_bake.py`.
 
+### Strip Face Bones (shipped 2026-07-18)
+
+`strip_face` on the operator: removes the face rig's deform bones (87 on the
+full face metarig, 153 -> 66-bone skeleton) and folds each one's weights into
+the head, so the face follows the head rigidly. Two hard-won details:
+
+- **Identify face bones on the FULL hierarchy, before extraction** — a face
+  deform bone is one whose ancestor chain passes through `ORG-face`.
+  Extraction orphans them (their ORG parents vanish), so descendants-of-head
+  finds nothing afterwards.
+- **`_merge_vgroup` now uses 'ADD' write mode** — 'REPLACE' can no-op for a
+  vertex not yet in the base group; invisible on limb twist merges (segments
+  always overlap) but face->head folding hits exactly that case.
+- Test lesson: assert per-vertex weight **conservation** (before == after),
+  not sum-to-1 — Blender's auto-weight does not normalize every vertex.
+
 ### Remaining refinements
 
 - Twist-bone preservation mode (UE `*_twist_01`) — currently merge-only.
-- Face deform bones (60+ on a full face rig) export as-is; a "strip face"
-  option may be wanted for game skeletons.
 - Multi-action export (all actions / NLA strips) — currently active action only.
 - In-engine validation of the FBX scale/axis matrices.
-- Phase 2: retarget EXTERNAL animations (Mixamo/mocap) ONTO the generated rig.
 
 ## Tier fit (DECIDED 2026-07-18)
 

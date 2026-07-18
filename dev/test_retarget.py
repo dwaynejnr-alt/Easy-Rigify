@@ -266,6 +266,33 @@ for b, Mb in M_before.items():
 rig.pose.bones["thigh_parent.L"]["IK_FK"] = 1.0
 ok("IK controllers baked (delta-correct): whole leg identical in FK and IK")
 
+# pole-vector mode: with the pole toggle ON and the leg in IK, the baked pole
+# targets must aim the knee so the chain still matches the clip
+par = rig.pose.bones["thigh_parent.L"]
+if "pole_vector" in par.keys():
+    M_fk_ref = {b: achieved(rig, b).copy()
+                for b in ("ORG-foot.L", "ORG-shin.L", "ORG-thigh.L")}
+    par["IK_FK"] = 0.0
+    par["pole_vector"] = True
+    bpy.context.view_layer.update()
+    worst_p, worst_r = 0.0, 0.0
+    for b, Mref in M_fk_ref.items():
+        Ma = achieved(rig, b)
+        worst_p = max(worst_p, (Ma.translation - Mref.translation).length)
+        a = math.degrees(Ma.to_quaternion().rotation_difference(
+            Mref.to_quaternion()).angle)
+        worst_r = max(worst_r, min(a, 360 - a))
+    par["IK_FK"] = 1.0
+    par["pole_vector"] = False
+    print(f"  pole-vector IK: worst pos err {worst_p:.5f} m, "
+          f"worst rot err {worst_r:.3f} deg")
+    if worst_p > 8e-3 or worst_r > 3.0:
+        fail(f"pole-vector IK diverges (pos {worst_p:.4f} m, "
+             f"rot {worst_r:.2f} deg)")
+    ok("pole-vector mode: baked pole targets keep the leg on the clip")
+else:
+    print("  (no pole_vector prop on this rig — pole check skipped)")
+
 # ── 2. source rotated 180 deg — the hands-behind-the-back bug class ─────────
 src.rotation_euler = Euler((0, 0, math.pi), 'XYZ')
 bpy.context.view_layer.update()

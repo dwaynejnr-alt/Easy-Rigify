@@ -309,8 +309,17 @@ Bone-category summary that emerged from all six rounds:
 - everything anatomical else    -> rest-aligned to the clip (Match Clip Pose)
 - visible IK controls           -> delta-snapped to their FK twin per frame
 
-Still open from the design: mapping UIList + JSON save/load, IK pole-vector
-keying (pole toggle ON rigs), batch retarget (Studio).
+### IK pole-vector keying (shipped 2026-07-18)
+
+`_POLE_SNAP`: every frame the pole targets (`thigh_ik_target`,
+`upper_arm_ik_target`) are placed at the knee/elbow pushed along the FK
+chain's bend direction (`knee - midpoint(hip, ankle)`, half-limb-length out;
+straight-limb fallback = previous frame's direction, else the mid bone's -Z).
+Location-only keys. Verified: pole_vector ON + IK mode reproduces the clip
+with 0.00000 m / 0.000 deg error on the whole leg chain. Note:
+`pole_vector` is a Boolean IDProperty — assign True/False, not 1/0.
+
+Still open from the design: batch retarget (Team tier).
 
 ## Effort estimate
 

@@ -152,6 +152,47 @@ if rig.animation_data is None or rig.animation_data.action is None:
     fail("original rig lost its action")
 ok("original rig still has its action")
 
+# ── strip_face: face rig removed, weights folded into the head ─────────────
+# clean up the kept skeleton from the first run, then export again stripped
+clean_prev = bpy.data.objects.get("GAME_SKELETON")
+if clean_prev:
+    for o in list(bpy.data.objects):
+        if o.parent == clean_prev:
+            bpy.data.objects.remove(o, do_unlink=True)
+    bpy.data.objects.remove(clean_prev, do_unlink=True)
+FBX2 = os.path.join(OUT_DIR, "anim_bake_test_noface.fbx")
+okflag, msg, stats2 = ge.build_and_export(
+    bpy.context, FBX2, target='UNREAL', keep_in_scene=True, strip_face=True)
+print(f"strip_face -> {okflag}: {msg}")
+if not okflag:
+    fail(msg)
+if stats2.get("face_stripped", 0) < 40:
+    fail(f"expected 40+ face bones stripped, got {stats2.get('face_stripped')}")
+if stats2["bones"] >= stats["bones"]:
+    fail("strip_face did not reduce bone count")
+clean2 = bpy.data.objects.get("GAME_SKELETON")
+bad = [b.name for b in clean2.data.bones
+       if any(t in b.name.lower() for t in
+              ("lip", "brow", "cheek", "nose", "temple", "jaw", "ear",
+               "eye", "teeth", "tongue", "forehead", "chin"))]
+if bad:
+    fail(f"face bones survived strip: {bad[:6]}")
+mesh2 = next(o for o in bpy.data.objects if o.parent == clean2)
+# conservation, not sum-to-1: Blender's auto-weight does not normalize every
+# vertex, so the invariant is that folding face weights into the head changes
+# NO vertex's total (same vertex order on the duplicate)
+worst = 0.0
+for v_src, v_out in zip(mesh.data.vertices, mesh2.data.vertices):
+    t_src = sum(g.weight for g in v_src.groups)
+    t_out = sum(g.weight for g in v_out.groups)
+    worst = max(worst, abs(t_out - t_src))
+if worst > 1e-4:
+    fail(f"face strip changed per-vertex weight totals (worst {worst:.6f})")
+ok(f"strip_face: {stats2['face_stripped']} face bones removed "
+   f"({stats['bones']} -> {stats2['bones']}), per-vertex totals conserved "
+   f"(worst drift {worst:.2e})")
+os.remove(FBX2)
+
 # ── FBX file exists and reimports with animation
 if not os.path.isfile(FBX_PATH) or os.path.getsize(FBX_PATH) < 10000:
     fail("FBX missing or suspiciously small")

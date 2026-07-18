@@ -29,85 +29,252 @@
         </nav>
 
         <div class="content">
-            <h1>Markers</h1>
-            <p class="intro">Markers tell the addon where each joint on your character should be. Place them automatically with detection, or manually for full control.</p>
+            <h1>Markers Tab</h1>
+            <p class="intro">A complete guide to placing markers and generating a rigged, skinned character.</p>
+
+            <section id="overview">
+                <h2>Overview</h2>
+
+                <h3>What markers are</h3>
+                <p>Markers are small, visible empties you place on your character. Each one tells Easy Rigify where a joint belongs — such as a shoulder, a knuckle, or an eye corner. Once the markers are in place, the addon snaps a Rigify metarig to them, so you never have to line up bones in Edit Mode by hand.</p>
+                <p>Markers are standard Blender empties. You can select them, grab them (<code>G</code>), and nudge any that land in the wrong spot. Adjusting a marker is always just click-and-drag — there is nothing hidden to "commit".</p>
+
+                <h3>Where it lives</h3>
+                <p>Everything lives in the 3D Viewport sidebar. Press <code>N</code> in the viewport and open the "Easy Rigify" tab. The tab has four sub-tabs:</p>
+                <ul>
+                    <li><strong>Markers</strong> — place markers on the body, hands, and face (this page)</li>
+                    <li><strong>Rig</strong> — add a metarig, align it to markers, generate</li>
+                    <li><strong>Skin</strong> — bind the mesh and clean up weights</li>
+                    <li><strong>Tools</strong> — fan bones and viewport helpers</li>
+                </ul>
+
+                <h3>The big picture</h3>
+                <ol>
+                    <li>Pick your body mesh</li>
+                    <li>Detect the body, then the fingers, then the face</li>
+                    <li>Fix any markers that are off, then mirror one good side across</li>
+                    <li>Run "Check All Markers"</li>
+                    <li>Go to the Rig tab: align and generate</li>
+                    <li>Go to the Skin tab: bind and clean up</li>
+                </ol>
+                <p>Detection is a starting point, not the finish line — expect to nudge a few markers by hand on stylised or unusual characters. That's normal and fast.</p>
+
+                <h3>Editions</h3>
+                <ul>
+                    <li><strong>Full edition</strong> — adds one-click AI detection (EasyDetect Body / Fingers / Face) alongside the geometric detectors</li>
+                    <li><strong>Lite edition</strong> — geometric detection only. The EasyDetect buttons and the finger-engine switch don't appear; everything else is identical</li>
+                </ul>
+                <p>A scene saved in one edition opens fine in the other.</p>
+            </section>
 
             <section id="body">
                 <h2>Body Markers</h2>
-                <p>Body markers define the spine, arms, legs, and feet.</p>
-
-                <h3>Auto Detect (geometric)</h3>
-                <p>Reads the mesh geometry directly. Works on any humanoid shape, fast and deterministic. Available in both editions.</p>
-
-                <h3>EasyDetect (AI, Full Edition)</h3>
-                <p>Uses a trained neural network. More accurate on unusual proportions and stylized characters.</p>
-
-                <h3>Manual placement</h3>
-                <p>Click "Place Body Markers" and follow the on-screen hints. The selected marker is highlighted.</p>
-
-                <div class="note">
-                    If auto-detection isn't quite right, grab a marker (<code>G</code>) and nudge it into place.
-                </div>
+                <ul>
+                    <li><strong>Body Mesh</strong> — set this to your character mesh first. It's remembered and reused by every detector, so you only pick it once.</li>
+                    <li><strong>Symmetrical Detect</strong> — when on, detection mirrors the left and right sides so they match exactly. Leave it on for symmetric characters.</li>
+                    <li><strong>EasyDetect Body</strong> (Full Edition) — neural body-marker placement. Best on unusual proportions and stylised bodies.</li>
+                    <li><strong>Auto Detect Body</strong> — geometric body-marker placement from the mesh shape. Places pelvis, spine, neck, head, shoulders, arms, elbows, hands, thighs, shins, feet, toes, and heels. Marker sizes auto-scale to the character.</li>
+                </ul>
+                <p>Either button places the full body-and-leg set. The scene is left as-is; nothing is hidden.</p>
             </section>
 
             <section id="fingers">
                 <h2>Finger Markers</h2>
 
-                <h3>One-click detection (AI, Full Edition)</h3>
-                <p>Click "EasyDetect Fingers" — all hand and finger joints are placed automatically.</p>
+                <h3>Engine (Full Edition): EasyDetect or Geometric</h3>
+                <ul>
+                    <li><strong>EasyDetect</strong> — the full AI pipeline; best result per hand.</li>
+                    <li><strong>Geometric</strong> — mesh-only detection, with its own tuning sliders:
+                        <ul>
+                            <li><strong>Auto-snap Wrist</strong> — moves the HAND marker onto the mesh wrist before detecting (the geometric walk starts there)</li>
+                            <li><strong>Knuckle Depth / Thumb Depth / Min Finger Size</strong> — tune placement for thick, thin, or stylised hands</li>
+                        </ul>
+                    </li>
+                </ul>
+                <p>In Lite there's no engine choice — the geometric engine (with the same sliders) is always used.</p>
 
-                <h3>Two-click per finger (manual)</h3>
-                <ol>
-                    <li>Click "Place Fingers"</li>
-                    <li>For each finger: first click = tip, second click = knuckle</li>
-                    <li>Middle joints are interpolated</li>
-                    <li>The right hand mirrors from the left</li>
-                </ol>
+                <ul>
+                    <li><strong>EasyDetect Fingers</strong> (or "Detect Fingers (Geometric)") — places every hand and finger joint in one click. Requires the HAND and ELBOW markers from body detection.</li>
+                    <li><strong>Place All Fingers</strong> — a manual, two-clicks-per-finger workflow: first click is the fingertip, second is the knuckle. The two middle joints are interpolated between them, and the right hand mirrors from the left.</li>
+                    <li>The small down-arrow beside "Place All Fingers" opens a per-finger picker, so you can redo just one finger (thumb, index, middle, ring, pinky) instead of all of them.</li>
+                    <li><strong>Straighten Finger Markers</strong> — projects each finger's joints onto its bend plane, removing side-to-side wander while keeping the natural curl.</li>
+                    <li><strong>Re-solve Selected Finger</strong> — re-runs detection for just the finger whose markers you have selected.</li>
+                </ul>
 
-                <h3>Per-finger picker</h3>
-                <p>Redo a single finger (e.g. the thumb) without redoing the whole hand.</p>
-
-                <div class="note">
-                    Fingers are detected independently from the wrist marker — adjusting the wrist doesn't affect finger placement.
+                <h3>Place All Fingers — walkthrough</h3>
+                <p>Clicking "Place All Fingers" starts an interactive two-click modal session for each finger. Click the tip first, then the knuckle, for the thumb; move to the index finger and do the same; repeat for all five fingers. You can undo each click and redo it.</p>
+                <p>After all five clicks, this mirrors the finger markers from left to right. You can then manually adjust each marker to fit the character's fingers for better bone placement.</p>
+                <div class="note warn">
+                    Always mirror any adjustment to the left or right side when done.
                 </div>
+
+                <h3>Finger Picker popover</h3>
+                <p>Opens a panel where you can select individual fingers to place separately. Useful if one finger was misplaced and you want to re-run just that one. Check or select which finger(s) to place, then click "Place Selected Fingers".</p>
             </section>
 
             <section id="face">
-                <h2>Face Markers</h2>
-                <p>Covers brows, eyes, eyelids, lips, nose, cheeks, chin, jaw, and forehead.</p>
+                <h2>Facial Markers</h2>
 
-                <h3>One-click detection (AI, Full Edition)</h3>
-                <p>Click "EasyDetect Face" to place all facial markers at once.</p>
+                <h3>Show Facial Markers</h3>
+                <p>Expands or collapses the facial marker section. When off, facial markers and their detection steps are hidden. Turn this on only when your character has a face rig. Leave it off for body-only rigs (the Human (No Face) metarig).</p>
 
-                <h3>Section-by-section (manual)</h3>
+                <h3>Select Meshes</h3>
+                <p>You must assign mesh objects before running any detection step. The system uses these meshes to project marker positions onto the correct geometry.</p>
                 <ul>
-                    <li><strong>Eyes</strong> — needs a separate eye mesh object</li>
-                    <li><strong>Brows</strong> — needs a separate eyebrow mesh</li>
-                    <li><strong>Lips</strong> — needs teeth and tongue meshes</li>
-                    <li><strong>Nose &amp; cheeks</strong> — detected from the head mesh</li>
-                    <li><strong>Chin &amp; jaw</strong> — deform bone placement</li>
+                    <li><strong>Body Mesh</strong> — the main face/head mesh, usually the same object as the body mesh set in Body Markers. Used for lips, nose, chin, cheeks, forehead, jaw, and temple markers.</li>
+                    <li><strong>Eyeball</strong> — enable if your character has separate eyeball objects. <strong>Eye Count</strong>: Single (one shared mesh, rare) or Split (separate Left/Right Eye objects, most common). Used for eyelid detection and eye-center marker placement.</li>
+                    <li><strong>Tongue</strong> — enable if your character has a separate tongue mesh. Used for tongue marker placement inside the mouth.</li>
+                    <li><strong>Teeth</strong> — enable if your character has separate teeth meshes. <strong>Teeth Count</strong>: Single (one mesh for both) or Split (separate Top/Bottom objects). Used for upper/lower teeth marker placement.</li>
+                    <li><strong>Eyebrow</strong> — enable if your character has separate eyebrow mesh objects. <strong>Brow Count</strong>: Single or Split, same idea as eyes/teeth.</li>
                 </ul>
+                <p><strong>EasyDetect Face</strong> (Full Edition) — one-click neural face-landmark placement. Needs the eye mesh selected to work effectively.</p>
 
+                <h3>Detection steps</h3>
+                <p>Run each step in order after assigning all meshes above. Each step projects markers onto the mesh using geometry analysis.</p>
+
+                <h4>Step 1 — Teeth &amp; Tongue</h4>
+                <p>Detects the position and orientation of upper and lower teeth (FACE_TEETH_T, FACE_TEETH_B) and tongue segments (FACE_TONGUE, FACE_TONGUE_001, FACE_TONGUE_002). Markers need manual adjustment to fit the teeth and tongue — cube-shaped empties for teeth, plain axes for the tongue. Requires Teeth and/or Tongue enabled above with meshes assigned.</p>
+
+                <h4>Step 2 — Brow &amp; Eyes</h4>
+                <p>Places 4 markers on each eyebrow and a marker for each eyeball center. Requires Brow Mesh assigned, and eyeball mesh(es) assigned if available.</p>
+
+                <h4>Step 3 — Lips</h4>
+                <p>Detects the lip contour: upper lip (FACE_LIP_T, FACE_MOUTH_TOP_L/R), lower lip (FACE_LIP_B, FACE_MOUTH_BOT_L/R), and mouth corners (FACE_MOUTH_CORNER_L/R). Requires Body Mesh assigned; also needs the teeth marker placed for better detection. Lip markers usually need a little adjustment to sit correctly on the character's lips.</p>
+
+                <h4>Step 4 — Nose</h4>
+                <p>Detects nose bridge (L&amp;R), nose tip, nose wing (L&amp;R), and nose bottom. Requires Body Mesh assigned.</p>
+
+                <h4>Step 5 — Eyelids</h4>
+                <p>Detects upper/lower eyelid, eyelid crease points, inner/outer lid corners, and Brow_bot_outer (extends outside the eyelid toward the ear). Requires Body Mesh assigned; eyeball mesh(es) highly recommended for accurate eyelid projection.</p>
+
+                <h4>Step 6 — Chin / Cheek / Jaw</h4>
+                <p>Detects chin center and sides (FACE_CHIN, FACE_CHIN_L/R), jaw line control points (FACE_JAW, FACE_JAW_SIDE_L/R), cheek high points (FACE_CHEEK_T/B_L/R), and ear attachment point (FACE_EAR_L/R). Requires Body Mesh assigned.</p>
+
+                <h4>Step 7 — Forehead</h4>
+                <p>Detects forehead center (FACE_FOREHEAD), forehead side arc (FACE_FOREHEAD_SIDE_L/R), and temple (FACE_TEMPLE_L/R). Requires Body Mesh assigned.</p>
+
+                <h3>After detection</h3>
+                <p>Inspect the face markers in the viewport. The system projects markers onto the nearest mesh surface geometry — for stylized characters, some markers may need manual fine-tuning.</p>
+                <p>To adjust a face marker: click it to select, move it with <code>G</code>. Face markers accept any position — alignment reads them the same way as manually placed markers.</p>
+            </section>
+
+            <section id="delete-all">
+                <h2>Delete All Markers</h2>
+                <p>Removes all body AND face markers from the scene and deletes both the RigifyMarkers and RigifyFaceMarkers collections. Use this to start fresh if you need to redo the entire placement.</p>
                 <div class="note warn">
-                    For best results, set up separate objects for eyes, eyebrows, teeth, and tongue. Without them, detection falls back to estimates.
+                    This cannot be undone in the usual sense — the empties are deleted from the scene. If you want to keep the markers for reference, save the file first.
                 </div>
             </section>
 
-            <section id="editing">
-                <h2>Editing Markers</h2>
+            <section id="symmetry">
+                <h2>Mirror</h2>
+                <p><strong>Live Symmetry</strong> — while on, moving a marker on one side moves its counterpart on the other in real time.</p>
                 <ul>
-                    <li>Press <code>G</code> to grab/move a marker, <code>X</code>/<code>Y</code>/<code>Z</code> to constrain to an axis</li>
-                    <li>Toggle "Show / Hide Markers" to hide markers and connecting lines together</li>
-                    <li>Click "Check All Markers" to confirm every required marker is placed, and flag anything overlapping or outside the mesh</li>
+                    <li><strong>Mirror L→R</strong> — copies all _L markers to their _R counterparts by mirroring the X position (negates X, preserves Y and Z). Use after manually repositioning left-side markers to keep both sides symmetrical.</li>
+                    <li><strong>Mirror R→L</strong> — same, in reverse — copies right-side markers to the left side.</li>
+                </ul>
+                <div class="note warn">
+                    Mirror only copies position. It does not check whether the mirrored position lands on the mesh surface. If your character isn't symmetrical (e.g. a costume with different details on each side) you may need to manually adjust the mirrored markers.
+                </div>
+            </section>
+
+            <section id="marker-count">
+                <h2>Marker Count</h2>
+                <p>Shows X/Y body markers placed (e.g. "18/24 body markers placed"). When all markers are placed the icon changes from info to a checkmark. This count covers only body markers — face markers aren't included.</p>
+            </section>
+
+            <section id="editing">
+                <h2>Viewport Controls</h2>
+                <ul>
+                    <li><strong>Show Markers / Hide Markers</strong> — hides or shows the entire RigifyMarkers collection. Useful to declutter the viewport while checking marker positions against the mesh. The button label updates to reflect the current state.</li>
+                    <li><strong>X-Ray</strong> — toggles X-Ray mode on the active viewport. With X-Ray on, markers are visible through the mesh, making it easier to place markers at joint centers inside the body. Turn on when placing hip, pelvis, and spine markers, which are typically inside the mesh geometry.</li>
+                    <li><strong>Mesh Selection</strong> — toggles whether the character mesh is selectable in the viewport. Turn off when you want to click-to-place markers without accidentally selecting the mesh; turn back on for normal work.</li>
+                    <li><strong>Marker Hints</strong> — when on (default), selecting any marker shows a colored hint overlay in the top-right corner of the 3D viewport with the marker's anatomical name, a short description of where it should be placed, and a color-coded category (blue = body, green = arm, orange = finger, pink = face). Turn off if the overlay is distracting.</li>
                 </ul>
             </section>
 
-            <section id="symmetry">
-                <h2>Mirroring &amp; Live Symmetry</h2>
-                <p>"Mirror L→R" / "Mirror R→L" copies all markers from one side to the other in one click.</p>
-                <p>"Live Symmetry" mirrors edits in real time — move a marker on one side and its counterpart moves with it across the character's symmetry plane.</p>
-                <div class="note">
-                    Disable Live Symmetry for asymmetrical characters.
+            <section id="workflow">
+                <h2>Full Workflow — Step by Step</h2>
+
+                <h3>1. Prepare the mesh</h3>
+                <p>Before anything else, apply scale and rotation on your character: <code>Object → Apply → All Transforms</code>. Unapplied scale is the single most common cause of bad alignment and binding. Do this once, up front.</p>
+
+                <h3>2. Pick the body mesh</h3>
+                <p>Markers tab → Body Markers → Body Mesh. Set it to your character. This is reused by every detector.</p>
+
+                <h3>3. Detect the body</h3>
+                <p>Click "Auto Detect Body" (or "EasyDetect Body" in the full edition). The spine, arms, legs, and feet markers appear. Orbit around and check them; grab (<code>G</code>) and nudge any that are off.</p>
+
+                <h3>4. Detect the fingers</h3>
+                <p>Click "EasyDetect Fingers" (or "Detect Fingers (Geometric)"). If the hands need work, use "Place All Fingers" for a manual pass, the per-finger picker to redo one finger, or "Straighten Finger Markers" to tidy wander.</p>
+
+                <h3>5. Detect the face (optional)</h3>
+                <p>Expand "Show Facial Markers", pick your eye/teeth/brow/tongue meshes, then run "EasyDetect Face" or the Step 1–7 detectors in order. Correct each region as you go.</p>
+
+                <h3>6. Mirror and correct</h3>
+                <p>Refine one side, then use "Mirror L→R" (or R→L) to copy it across. Turn on Live Symmetry if you want both sides to move together while you adjust.</p>
+
+                <h3>7. Check</h3>
+                <p>Run "Check All Markers". Fix anything it reports before moving on — aligning consumes the markers, so they need to be correct now.</p>
+
+                <h3>8. Align and generate (Rig tab)</h3>
+                <p>Switch to the Rig tab. Add a Rigify metarig, click "Align Rig to Markers" to snap every bone onto your markers (bone rolls included), then "Generate Rig" to produce the final Rigify control rig.</p>
+
+                <h3>9. Bind and clean up (Skin tab)</h3>
+                <p>Switch to the Skin tab. Bind the mesh with Smart Bind, then use the weight tools — surgical joint tightening, smoothing, symmetry, cleanup — to polish the deformation.</p>
+            </section>
+
+            <section id="tips">
+                <h2>Tips, Warnings, and Troubleshooting</h2>
+
+                <h3>Tips</h3>
+                <ul>
+                    <li><strong>Apply transforms first.</strong> <code>Object → Apply → All Transforms</code> on the body mesh before you detect anything. Unapplied scale in particular ruins both alignment and binding.</li>
+                    <li><strong>Detection is a starting point.</strong> Treat auto-placed markers as 90% done and plan to nudge a few by hand. That's faster than perfect placement and completely normal.</li>
+                    <li><strong>Mirror to save time.</strong> Perfect one side, then mirror it across instead of placing both sides by hand.</li>
+                    <li><strong>Use Mesh Selection.</strong> Turn on the Mesh Selection lock so you grab markers, not the body, while correcting.</li>
+                    <li><strong>X-Ray for interior joints.</strong> Turn on X-Ray to reach markers that sit inside the mesh (hips, shoulders).</li>
+                    <li><strong>Check before you align.</strong> Always run "Check All Markers" first — aligning consumes the markers, so problems are cheaper to fix beforehand.</li>
+                    <li><strong>Fingers: tip then knuckle.</strong> In manual placement the first click is always the fingertip, the second the knuckle.</li>
+                </ul>
+
+                <h3>Warnings</h3>
+                <ul>
+                    <li>Aligning the rig consumes the markers — make sure they're correct first.</li>
+                    <li>"Delete All Markers" clears everything with no per-marker undo prompt.</li>
+                    <li>Finger detection needs the HAND and ELBOW markers from body detection. Detect the body before the fingers.</li>
+                </ul>
+
+                <h3>Troubleshooting</h3>
+
+                <div class="qa">
+                    <h3>Markers land in the wrong place / everything looks skewed</h3>
+                    <p>Almost always unapplied scale or rotation. Undo, apply all transforms, and detect again.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>Detection seems to do nothing</h3>
+                    <p>Confirm the Body Mesh picker points at your actual character mesh (not a marker, an eye, or a stray object), and that the object still exists in the scene.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>Fingers are missing or collapsed</h3>
+                    <p>Make sure the body was detected first (fingers need HAND and ELBOW). On stylised hands, switch to the Geometric engine and adjust Knuckle Depth, Thumb Depth, and Min Finger Size, or place them manually.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>A few markers are outside the mesh</h3>
+                    <p>"Check All Markers" flags these. Select each one, turn on X-Ray, and drag it back onto the surface — or re-run detection.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>The EasyDetect (AI) buttons aren't showing</h3>
+                    <p>You're on the Lite edition (geometric only), or the AI runtime couldn't load on your platform. The geometric detectors do the same job and are always available.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>The rig deforms badly after binding</h3>
+                    <p>Re-check that scale was applied before binding, then use the Skin tab's surgical tightening and smoothing on the affected joints.</p>
                 </div>
             </section>
         </div>

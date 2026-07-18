@@ -29,99 +29,71 @@
         </nav>
 
         <div class="content">
-            <h1>Troubleshooting &amp; FAQ</h1>
-
-            <section id="common">
-                <h2>Common Issues</h2>
-
-                <div class="qa">
-                    <h3>Addon isn't showing in Blender</h3>
-                    <p>Edit → Preferences → Get Extensions → search "Easy Rigify" → make sure it's checked/enabled. Close and reopen Preferences; the tab appears in the 3D Viewport sidebar (<code>N</code>).</p>
-                </div>
-
-                <div class="qa">
-                    <h3>"Rigify addon not found"</h3>
-                    <p>Go to Edit → Preferences → Add-ons (not Get Extensions), search "Rigify", and enable it. Rigify ships with Blender but isn't on by default.</p>
-                </div>
-
-                <div class="qa">
-                    <h3>Markers won't place on my mesh</h3>
-                    <p>Make sure the mesh is selected and set as "Body Mesh". Apply all transforms (<code>Object → Apply → All Transforms</code>), check the mesh scale is reasonable (~1-2 Blender units tall), and make sure it's a single connected object.</p>
-                </div>
-
-                <div class="qa">
-                    <h3>Alignment is completely off</h3>
-                    <p>Usually unapplied scale/rotation. Delete the metarig, apply all transforms on your mesh, re-place and validate markers, then re-run "Align Rig to Markers".</p>
-                </div>
-
-                <div class="qa">
-                    <h3>AI detection doesn't work (Full Edition)</h3>
-                    <p>Check the system console (Help → Toggle System Console) for errors mentioning "onnxruntime" or "AI". Geometric detection works as a fallback if AI can't load on your platform.</p>
-                </div>
-
-                <div class="qa">
-                    <h3>Mesh deformation looks bad</h3>
-                    <p>Run "Tighten Weights" in the Skin tab, try a different preset, use "Analyze/Repair Joint Bleed", and manually paint problem joints with "Smooth Weights" to blend transitions.</p>
-                </div>
-
-                <div class="qa">
-                    <h3>Fingers look wrong or twisted</h3>
-                    <p>Use "Straighten Fingers", or re-detect a single finger with the per-finger picker. Make sure the hand is in a clear, neutral pose before detecting.</p>
-                </div>
-
-                <div class="qa">
-                    <h3>"Check All Markers" shows errors</h3>
-                    <p><strong>Missing</strong> — place the marker at the position shown by the on-screen hint. <strong>Overlapping</strong> — move markers apart. <strong>Outside mesh</strong> — grab (<code>G</code>) and move the marker onto the mesh.</p>
-                </div>
-
-                <div class="qa">
-                    <h3>Blender crashes or freezes</h3>
-                    <p>Save first. Very high poly counts can cause slowdowns — try decimating. Update to the latest Blender 4.2+ and check the GitHub issues page for your version.</p>
-                </div>
-            </section>
+            <h1>FAQ</h1>
 
             <section id="faq">
-                <h2>FAQ</h2>
+                <h2>Frequently Asked Questions</h2>
 
                 <div class="qa">
-                    <h3>Can I use Easy Rigify with other Rigify features?</h3>
-                    <p>Yes. It creates a standard Rigify rig — tweak control shapes, add custom controls, or use any other Rigify feature after generation.</p>
+                    <h3>Do I need to know how to use Rigify?</h3>
+                    <p>No. Easy Rigify handles metarig creation, bone alignment, and generation for you. You don't need to use Edit Mode or understand Rigify's internal bone structure to get a working rig.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>Do both editions work together?</h3>
-                    <p>Yes. A file saved in the Full Edition opens in Lite using geometric detection. They can't be installed at the same time.</p>
+                    <h3>Does my character need to be in T-pose?</h3>
+                    <p>Yes. The auto-detection algorithms scan your mesh geometry along world axes to find joint centers and facial landmarks. A standard T-pose or A-pose (arms out, palms down, feet flat) gives the best results.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>Can I use this for non-humanoid characters?</h3>
-                    <p>Not officially — it's built for bipeds with arms, legs, hands, and a face. Quadrupeds or alien anatomy need manual marker placement.</p>
+                    <h3>What if the auto-detected markers land in the wrong place?</h3>
+                    <p>Markers are plain Empty objects — select any marker and move it manually in the viewport like any other object. Re-run Align Rig after adjusting. Detection gives you a starting point; fine-tuning by hand is expected for characters with unusual proportions.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>What's the maximum mesh size?</h3>
-                    <p>No hard limit, but detection is slower on very high poly counts. Consider decimating for faster detection.</p>
+                    <h3>Can I use it with non-human characters (animals, creatures)?</h3>
+                    <p>The rig system is built around Rigify's Human rig, so it works best with bipeds. Quadrupeds and non-humanoid creatures are not currently supported.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>Can I export the rig to game engines?</h3>
-                    <p>Yes — export as FBX or glTF. The Rigify rig is a standard armature and works with any engine supporting skeletal animation.</p>
+                    <h3>Do I need multiple meshes (body, clothing, eyes, teeth)?</h3>
+                    <p>No, a single body mesh works fine. Smart Bind and the weight tools support multiple meshes at once — body, clothing, eyes, teeth, and tongue each get appropriate bone filtering automatically when detected.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>Is internet needed?</h3>
-                    <p>No. Everything runs locally, including the Full Edition's bundled AI runtime.</p>
+                    <h3>Can I edit the metarig after alignment?</h3>
+                    <p>Yes. Align Rig positions the metarig bones but doesn't lock anything. You can enter Edit Mode on the metarig and adjust bones normally before running Generate. Re-run Align if you want to reset to the marker positions.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>How do I report a bug?</h3>
-                    <p>Open an issue on <a href="https://github.com/dwaynejnr-alt/Easy-Rigify" target="_blank">GitHub</a> with your Blender version, steps to reproduce, and a screenshot or error message.</p>
+                    <h3>What are fan bones and do I need them?</h3>
+                    <p>Fan bones are extra deform bones placed at joint hinges (shoulder, elbow, wrist, hip, knee) that help preserve mesh volume when a limb bends. Without them, elbows and knees can collapse or pinch. They're optional — generate them from the Tools tab after your rig is set up if you want cleaner deformation. See <a href="features.html#fan-bones">Fan Bones</a>.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>The Check Markers tool says two markers are coincident — what does that mean?</h3>
+                    <p>Two markers are in the same position (within 5mm of each other). This usually happens when auto-detection places overlapping landmarks. Move one of them apart manually before aligning. Coincident markers create zero-length bones, which will cause Rigify to crash during generation.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>Rigify generation failed with a "zero length vectors" error — what do I do?</h3>
+                    <p>Run Check All Markers first to find any coincident markers and fix them. Easy Rigify also includes a built-in safety pass that corrects most zero-length bones automatically, but if two markers are placed at exactly the same position, the safety pass may not be enough — those need to be moved apart manually.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>Does it work with Blender 5.x?</h3>
+                    <p>The minimum required version is Blender 4.2. The addon has been developed and tested on Blender 4.2 and later. Blender 5.x should work — if you encounter any issues, use the Report Bug button in addon preferences to send a report.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>Does it work on Mac and Linux?</h3>
+                    <p>Yes. The addon is pure Python and works on Windows, macOS, and Linux. The Help button opens documentation using the platform's default browser on all three operating systems.</p>
                 </div>
             </section>
 
             <section id="contact">
                 <h2>Get Help</h2>
                 <ul>
+                    <li>Use the <strong>Report Bug</strong> button in Edit → Preferences → Add-ons → Easy Rigify — it opens a pre-filled email to the developer</li>
                     <li><a href="mailto:dwayne.jnr@gmail.com">Email</a> for direct support</li>
                     <li><a href="https://github.com/dwaynejnr-alt/Easy-Rigify/issues" target="_blank">GitHub Issues</a> for bug reports</li>
                 </ul>

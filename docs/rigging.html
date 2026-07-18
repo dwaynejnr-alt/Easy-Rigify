@@ -29,63 +29,195 @@
         </nav>
 
         <div class="content">
-            <h1>Rig</h1>
-            <p class="intro">Once markers are placed, align the Rigify metarig to them, then generate the final control rig.</p>
+            <h1>Rig Tab</h1>
+            <p class="intro">Complete guide to the Rig tab. Panel location: View3D → Sidebar → Easy Rigify. For Blender 4.2+.</p>
 
             <section id="overview">
-                <h2>Overview</h2>
-                <p>The metarig is an armature Rigify reads to generate your control rig. You don't animate with it directly — Rigify builds the actual control rig from it, with IK, FK, and other mechanisms.</p>
+                <h2>Overview and Workflow</h2>
+                <p>You add a metarig (the editable skeleton template), click Align Rig to Markers to snap every metarig bone to the markers you placed, then click Generate Rig to run Rigify and produce the Rigify rig.</p>
+                <p>After the rig is generated, all markers are automatically deleted. You then move to the Skin tab to bind your meshes.</p>
+
+                <h3>Prerequisites</h3>
+                <ul>
+                    <li>Rigify add-on must be enabled (Edit → Preferences → Add-ons → Rigify)</li>
+                    <li>Your character mesh should be in the scene at the correct scale</li>
+                </ul>
+                <p>Open: View3D → Sidebar (N panel) → Easy Rigify → Rig tab. The Rig tab handles three sequential operations: adding the metarig template to the scene, aligning the metarig bones to your markers, and generating the final Rigify rig. It also provides a Custom Preserve system for safely regenerating a rig after markers and rig tweaks.</p>
+            </section>
+
+            <section id="metarig">
+                <h2>Add Meta Rig</h2>
+                <p>The metarig is the editable skeleton template that Rigify uses. You add it once, align it to your markers, then generate the final rig from it. You do NOT animate with the metarig — it is only for setup.</p>
+
+                <h3>Human (No Face)</h3>
+                <p>Imports a pre-configured Rigify Human metarig that includes:</p>
+                <ul>
+                    <li>Full spine (pelvis, spine chain, neck, head)</li>
+                    <li>Both arms with wrists and hands</li>
+                    <li>Both legs with feet, toes, and heels</li>
+                    <li>All fingers (thumb + 4 fingers per hand)</li>
+                </ul>
+                <p>Does NOT include face bones. The generated rig has no facial controls.</p>
+                <p>Use for: game characters (face controls are expensive and often unnecessary), body-only characters, or characters where you'll paint facial shapes manually (shape keys) rather than using a bone-driven face rig.</p>
+
+                <h3>Human (With Face)</h3>
+                <p>Imports a Rigify Human metarig that includes all body bones plus the full Rigify face rig: jaw, teeth, and tongue bones; lip and mouth control bones; nose bones; eye and eyelid bones; brow bones; cheek, chin, and jaw bones; forehead and temple bones.</p>
+                <p>Use for dialogue characters that require facial animation, or characters where you've placed face markers using the Markers tab.</p>
+                <div class="note warn">
+                    A face rig adds significant complexity to the metarig. After adding it you must place face markers (Markers tab) and run Align Rig to Markers before generating. The face rig without alignment will not match your character.
+                </div>
+                <p>Both buttons also add the metarig to the Blender Add menu: <code>Add → Armature → Human (No Face) / Human (With Face)</code>.</p>
             </section>
 
             <section id="align">
-                <h2>Align Rig to Markers</h2>
-                <ol>
-                    <li>Make sure markers are placed and validated</li>
-                    <li>Go to the Rig tab</li>
-                    <li>Click "Align Rig to Markers"</li>
-                </ol>
-                <p>This creates a metarig if one doesn't exist, positions every bone to match your markers, and calculates bone rolls from the mesh surface.</p>
+                <h2>Align</h2>
+                <h3>Align Rig to Markers</h3>
+                <p>The core operation of the addon. Reads every placed marker and moves each metarig bone head/tail to the marker.</p>
+                <p><strong>Requirements before clicking:</strong></p>
+                <ul>
+                    <li>The metarig must be the active object</li>
+                    <li>Body markers must be placed</li>
+                    <li>If you added a "With Face" metarig, face markers must also be placed</li>
+                </ul>
+
+                <p>A dialog box appears with two options:</p>
+                <ul>
+                    <li><strong>Apply Bone Roll</strong> (default ON) — when on, the bone roll (rotation of each bone around its local Y axis) is recalculated after alignment. This ensures DEF bones point in the correct anatomical direction for deformation. Leave on unless you've manually set custom bone rolls on the metarig and want to preserve them.</li>
+                    <li><strong>Align Face Bones</strong> (default ON) — when on, face bones are aligned using the face markers. When off, face bones are left in their default metarig positions. Turn off only if you're using a No Face metarig (no face bones exist), or you want to manually position face bones without marker help.</li>
+                </ul>
+
+                <p><strong>After alignment:</strong></p>
+                <ul>
+                    <li>All markers are automatically deleted</li>
+                    <li>The mesh selection restriction is lifted so you can see the result</li>
+                    <li>You should inspect the metarig and manually tweak any bone that didn't align correctly (rare, but can happen on very stylised characters)</li>
+                </ul>
             </section>
 
             <section id="generate">
-                <h2>Generate Rig</h2>
-                <p>Click "Generate Rig" after alignment. Rigify reads the metarig and produces control bones (for animation), deform bones (connected to mesh weights), and mechanism bones (IK poles, hand IK, etc.) in a new armature called "rig".</p>
+                <h2>Rigify</h2>
+                <h3>Generate Rig</h3>
+                <p>Runs Rigify's built-in Generate step on the active metarig.</p>
+                <p><strong>What happens:</strong></p>
+                <ol>
+                    <li>The addon sets the correct <code>primary_rotation_axis</code> on finger bones (required by Rigify for correct finger curl direction)</li>
+                    <li>Rigify generates the full control rig with all its FK/IK switching, stretch bones, bendy bones, and WGTS_ widget collection</li>
+                    <li>The metarig is hidden (not deleted — it's kept in case you need to re-align and regenerate)</li>
+                </ol>
+                <p>The generated rig's name defaults to "rig". The metarig's name defaults to "metarig".</p>
+
+                <p><strong>Requirements:</strong></p>
+                <ul>
+                    <li>The metarig must be the active object</li>
+                    <li>Rigify add-on must be enabled</li>
+                    <li>Align Rig to Markers must have been run</li>
+                </ul>
+
+                <p><strong>After generation:</strong> move to the Skin tab to bind your character meshes. You can delete the WGTS_ collection if you don't need the custom bone widgets visible in the outliner (they'll still work).</p>
             </section>
 
             <section id="regenerate">
-                <h2>Regenerate Without Losing Work</h2>
-                <p>Back up and restore custom changes so you can tweak the metarig and regenerate without starting over.</p>
+                <h2>Regenerate Rigify &amp; Custom Preserve</h2>
+                <p>This section lets you safely regenerate the rig after making changes to the metarig without losing any custom work you've done on the generated rig (custom bone shapes, constraint tweaks, custom properties, etc.).</p>
+
+                <div class="note">
+                    <strong>Why you need this:</strong> Rigify's standard Generate button overwrites the generated rig completely. Any manual changes you made to the generated rig are erased. The Backup → Restore → Regenerate workflow preserves those changes.
+                </div>
+
+                <ul>
+                    <li><strong>Metarig</strong> [object picker] — the source metarig to regenerate from (usually named "metarig")</li>
+                    <li><strong>Generated Rig</strong> [object picker] — the existing generated rig that contains custom changes you want to preserve (usually named "rig")</li>
+                </ul>
+
+                <h3>Backup</h3>
+                <p>Reads and saves a snapshot of all custom data from the Generated Rig into memory (stored as JSON in the scene). What's backed up: custom bone shapes (<code>bone.custom_shape</code>), custom properties on bones, constraint settings, bone group colours. Run Backup before making any metarig changes.</p>
+
+                <h3>Restore</h3>
+                <p>Applies the saved backup data back to the (newly generated) rig. Run Restore after regenerating the rig to put your custom data back.</p>
+
+                <p><strong>Backup ready / No backup yet</strong> — status label showing whether a backup is currently stored. Always check this before running Regenerate & Preserve.</p>
+
+                <h3>Regenerate &amp; Preserve</h3>
+                <p>Performs the full three-step process in a single click:</p>
                 <ol>
-                    <li>Click "Backup Custom Rig Changes" before editing</li>
-                    <li>Adjust the metarig in Edit Mode</li>
-                    <li>Click "Generate Rig" again</li>
-                    <li>Click "Restore Custom Rig Changes" to reapply your custom shapes and properties</li>
+                    <li>Backup — saves custom data from the existing generated rig</li>
+                    <li>Generate — runs Rigify Generate on the metarig</li>
+                    <li>Restore — applies the backup to the new rig</li>
+                </ol>
+                <p>This is the button to use after any metarig edit (bone position, Rigify parameters, new bones added).</p>
+                <div class="note warn">
+                    Both Metarig and Generated Rig must be set before clicking. If either picker is empty the operation cannot proceed.
+                </div>
+            </section>
+
+            <section id="workflow">
+                <h2>Full Workflow — Step by Step</h2>
+                <ol>
+                    <li>Open the Rig tab. Click Human (With Face).</li>
+                    <li>Select the metarig. Click Align Rig to Markers. In the dialog: Apply Bone Roll = ON, Align Face Bones = ON. Click OK.</li>
+                    <li>Inspect the face bones. The jaw, lip, and eye bones should sit just inside the mesh surface. Adjust in Edit Mode as needed.</li>
+                    <li>Click Generate Rig.</li>
+                </ol>
+
+                <h3>Regenerating after metarig changes</h3>
+                <p>Use this if you need to re-align and regenerate after the rig is already in use (e.g. weights are painted, custom shapes were assigned).</p>
+                <ol>
+                    <li>In the Rig tab, Regenerate Rigify &amp; Custom Preserve section: pick your metarig in the Metarig field, pick your generated rig in the Generated Rig field</li>
+                    <li>Click Backup. Confirm "Backup ready" appears.</li>
+                    <li>Make your metarig changes (re-align bones, adjust Rigify parameters, etc.)</li>
+                    <li>Click Regenerate &amp; Preserve — the rig is regenerated and your custom data is restored</li>
                 </ol>
             </section>
 
             <section id="troubleshoot">
-                <h2>Troubleshooting Alignment</h2>
+                <h2>Tips, Warnings, and Troubleshooting</h2>
+
+                <h3>General</h3>
+                <ul>
+                    <li>All markers must be on the same side of the mirror plane as their name implies (_L = positive X, _R = negative X) for alignment to work. Auto Detect handles this automatically.</li>
+                    <li>If your character has a non-standard scale (e.g. imported at 0.01 from a game engine), apply all transforms (<code>Ctrl+A → All Transforms</code>) BEFORE running Auto Detect or Place Arm Markers. Detection reads world-space positions, so a tiny scale produces tiny results.</li>
+                </ul>
+
+                <h3>Alignment</h3>
+                <ul>
+                    <li>Always select the metarig before clicking Align Rig to Markers — the operator reads the active object to find the armature.</li>
+                    <li>After alignment, check the metarig in Edit Mode before generating. Common issues: heel bones have the wrong angle (adjust heel.02.L/R tails); pelvis is too high or too low (move the PELVIS marker and re-align); finger bones aren't straight (re-run Place Finger Markers and re-align).</li>
+                    <li>Alignment deletes all markers when it finishes. If you want to keep markers for a second pass, duplicate the scene before aligning.</li>
+                </ul>
+
+                <h3>Regenerate &amp; Preserve</h3>
+                <ul>
+                    <li>The backup stores data in the scene file. Saving the file after Backup means the backup survives a Blender restart.</li>
+                    <li>Restore matches bones by name. If you renamed bones on the generated rig, those bones won't receive their custom data back.</li>
+                    <li>Regenerate &amp; Preserve does NOT preserve vertex group weights on meshes. If you re-skin the character after a regeneration, the mesh weights will still be there because vertex groups are on the mesh, not the rig. However, if Rigify renames or removes any DEF bones, those vertex groups become orphans — run Remove Unused Groups (Skin tab → Cleanup) after a regeneration to clean them up.</li>
+                </ul>
+
+                <h3>Troubleshooting</h3>
 
                 <div class="qa">
-                    <h3>Misaligned bones</h3>
-                    <p>Usually unapplied scale/rotation on the mesh. Apply all transforms, re-validate markers with "Check All Markers", then re-run "Align Rig to Markers".</p>
+                    <h3>"No markers found" after Align Rig</h3>
+                    <p>Markers may have been accidentally moved outside the RigifyMarkers collection. Check the outliner. You can also run Delete All Markers and redo placement.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>Bad bone rolls</h3>
-                    <p>Check that mesh normals aren't inverted and that markers are placed symmetrically, then re-align and regenerate.</p>
+                    <h3>Metarig looks correct but Generated Rig bones are wrong</h3>
+                    <p>Some Rigify bone types compute their final shape from metarig parameters rather than just bone positions. For fingers, make sure Align Rig to Markers ran with Apply Bone Roll ON. For the face, make sure Align Face Bones was ON.</p>
                 </div>
 
                 <div class="qa">
-                    <h3>Rig doesn't appear</h3>
-                    <p>Make sure Rigify is enabled in Blender preferences. Check the system console (Help → Toggle System Console) for errors, or delete the metarig and re-run alignment.</p>
+                    <h3>"Could not add metarig — is Rigify enabled?"</h3>
+                    <p>Enable Rigify: Edit → Preferences → Add-ons → search "Rigify" → tick.</p>
                 </div>
-            </section>
 
-            <section id="bone-rolls">
-                <h2>Bone Rolls</h2>
-                <p>Bone roll defines the rotation axis of a bone and affects deformation direction and IK solver behavior (e.g. elbow pole direction).</p>
-                <p>Easy Rigify calculates rolls automatically by reading mesh surface normals near each bone and setting the roll so deformation follows your mesh shape. You can adjust a bone's roll manually in Edit Mode if needed.</p>
+                <div class="qa">
+                    <h3>Face detection places markers in wrong positions</h3>
+                    <p>Confirm the correct mesh is assigned in each picker. On characters with open mouths or unusual proportions, lip detection may project onto the inside of the mouth. Move the FACE_LIP_T and FACE_LIP_B markers manually to the correct lip surface positions.</p>
+                </div>
+
+                <div class="qa">
+                    <h3>After alignment the spine bones are too short or too long</h3>
+                    <p>The PELVIS, SPINE_001, SPINE_002, CHEST, NECK, and HEAD markers control the entire spine chain. If any of these is at the wrong height, the spine segment between them will be wrong. Correct the marker positions and re-run Align Rig to Markers.</p>
+                </div>
             </section>
         </div>
     </div>

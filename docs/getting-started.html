@@ -30,115 +30,101 @@
 
         <div class="content">
             <h1>Getting Started</h1>
+            <p class="intro">This page gets you from a fresh install to a working character rig in four steps.</p>
 
             <section id="requirements">
                 <h2>Requirements</h2>
                 <ul>
-                    <li><strong>Blender 4.2 or newer</strong> — the addon uses features from Blender 4.2 and later.</li>
-                    <li><strong>Rigify enabled</strong> — built into Blender; enable it in Preferences → Add-ons.</li>
-                    <li><strong>No internet connection needed</strong> — everything runs locally.</li>
-                    <li><strong>Humanoid mesh</strong> — realistic scans, stylized characters, any scale.</li>
+                    <li><strong>Blender 4.2 or newer</strong> installed</li>
+                    <li><strong>Rigify enabled</strong> in Blender preferences — Edit → Preferences → Add-ons → search "Rigify" → check the box</li>
+                    <li>A character mesh in <strong>T-pose</strong> (arms out, palms down, feet flat on the ground)</li>
                 </ul>
-            </section>
-
-            <section id="editions">
-                <h2>Editions</h2>
-                <p>Easy Rigify comes in two editions that work together.</p>
-                <table>
-                    <thead>
-                        <tr><th>Feature</th><th>Full Edition</th><th>Lite Edition</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>Body detection (AI)</td><td>Yes</td><td>No</td></tr>
-                        <tr><td>Body detection (geometric)</td><td>Yes</td><td>Yes</td></tr>
-                        <tr><td>Finger detection (AI)</td><td>Yes</td><td>No</td></tr>
-                        <tr><td>Face detection (AI)</td><td>Yes</td><td>No</td></tr>
-                        <tr><td>Manual marker placement</td><td>Yes</td><td>Yes</td></tr>
-                        <tr><td>Full rigging pipeline</td><td>Yes</td><td>Yes</td></tr>
-                        <tr><td>Skinning tools</td><td>Yes</td><td>Yes</td></tr>
-                        <tr><td>Download size</td><td>~50 MB</td><td>~1 MB</td></tr>
-                    </tbody>
-                </table>
-                <div class="note">
-                    Files saved in the Full Edition open in Lite and use the geometric engine. Both editions can't be installed at the same time, but scenes are compatible.
-                </div>
             </section>
 
             <section id="install">
-                <h2>Installation</h2>
-
-                <h3>1. Download</h3>
-                <p>Get the latest version from <a href="https://github.com/dwaynejnr-alt/Easy-Rigify/releases" target="_blank">GitHub Releases</a>.</p>
-
-                <h3>2. Install in Blender</h3>
+                <h2>Step 1 — Install the Addon</h2>
                 <ol>
                     <li>Open Blender</li>
-                    <li>Go to <code>Edit → Preferences</code></li>
-                    <li>Click <code>Get Extensions</code></li>
-                    <li>Open the dropdown and select <code>Install from Disk...</code></li>
-                    <li>Browse to the downloaded zip and select it</li>
-                    <li>Click <code>Install Extension</code></li>
+                    <li>Go to Edit → Preferences → Get Extensions (or Add-ons)</li>
+                    <li>Click the drop-down arrow (top right) → "Install from Disk..."</li>
+                    <li>Select the <code>easy_rigify-x.x.x.zip</code> file</li>
+                    <li>Make sure the checkbox next to "Easy Rigify" is checked (enabled)</li>
+                    <li>Close Preferences. Press <code>N</code> in the 3D Viewport to open the side panel, then click the "AutoRig" tab</li>
                 </ol>
 
-                <h3>3. Enable</h3>
+                <h3>Installing the AI runtime (ONNX Runtime) — one time, Full Edition</h3>
+                <p>The AI models need a small runtime (onnxruntime + Pillow) installed once into Blender. This requires an internet connection.</p>
                 <ol>
-                    <li>Search for "Easy Rigify" in the Extensions list</li>
-                    <li>Check the box to enable it</li>
-                    <li>The AI runtime (Full Edition) loads automatically</li>
-                    <li>A new "Easy Rigify" tab appears in the 3D Viewport sidebar (press <code>N</code>)</li>
+                    <li>Go to Edit → Preferences → Add-ons and expand "Easy Rigify"</li>
+                    <li>Under "AI Detection (ONNX Runtime)" click "Install ONNX Runtime"</li>
+                    <li>Wait until it reports "onnxruntime installed and ready." (the download is a few hundred MB — give it a minute)</li>
+                    <li>If it asks you to restart, close and reopen Blender</li>
                 </ol>
-
+                <p>You only do this once per Blender installation. Afterward the button shows "Reinstall" (to repair) and "Uninstall" (to remove the runtime).</p>
                 <div class="note">
-                    On first load, the full edition downloads the AI runtime once. If it can't load on your platform, the geometric detectors still work.
+                    No admin rights are needed; it installs into your user folder. If it fails, open Window → Toggle System Console and try again to see the detailed message. Once installed, Preferences shows "onnxruntime + Pillow: Ready".
                 </div>
             </section>
 
-            <section id="quickstart">
-                <h2>Quick Start</h2>
-
-                <h3>1. Prepare your model</h3>
-                <ul>
-                    <li>Apply all transforms: <code>Object → Apply → All Transforms</code></li>
-                    <li>Put the mesh in a T-pose or A-pose</li>
-                    <li>Select the character mesh</li>
-                </ul>
-
-                <h3>2. Place markers</h3>
-                <ul>
-                    <li>Press <code>N</code>, open the "Easy Rigify" tab, go to Markers</li>
-                    <li>Set your mesh as "Body Mesh"</li>
-                    <li>Click "Auto Detect Body" (geometric) or "EasyDetect Body" (AI)</li>
-                    <li>Nudge any markers that are off, then click "Check All Markers"</li>
-                </ul>
-
-                <h3>3. Generate the rig</h3>
-                <ul>
-                    <li>Go to the Rig tab</li>
-                    <li>Click "Align Rig to Markers", then "Generate Rig"</li>
-                </ul>
-
-                <h3>4. Skin the mesh</h3>
-                <ul>
-                    <li>Go to the Skin tab</li>
-                    <li>Click "Bind Mesh"</li>
-                    <li>Click "Tighten Weights" to clean up deformation</li>
-                    <li>Use "Paint Weights" to fine-tune problem areas</li>
-                </ul>
-
-                <div class="note done">
-                    That's a complete, riggable character. See the section pages below for details on each step.
+            <section id="markers-step">
+                <h2>Step 2 — Place Markers</h2>
+                <p>Markers are the landmarks Easy Rigify uses to position your rig bones.</p>
+                <ol>
+                    <li>Select your character mesh in the viewport</li>
+                    <li>Open the Markers tab in the Easy Rigify panel</li>
+                    <li>Click <strong>Auto Detect Body</strong> — markers snap to joint centers across your mesh</li>
+                    <li>If your character has a face rig, click <strong>Detect Face Landmarks</strong> to place facial markers</li>
+                    <li>Check the viewport — each marker shows a color-coded icon above it:
+                        <ul>
+                            <li>Green = body joints</li>
+                            <li>Orange = face (brows, nose, lips)</li>
+                            <li>Blue = eye and eyelid markers</li>
+                            <li>Yellow = teeth and tongue</li>
+                            <li>Purple = cheeks, chin, ears</li>
+                        </ul>
+                    </li>
+                    <li>Run <strong>Check All Markers</strong> to confirm nothing is missing or overlapping before continuing</li>
+                </ol>
+                <div class="note">
+                    If a marker lands in the wrong place, select it and move it manually in the viewport like any other object.
                 </div>
             </section>
 
-            <section id="next-steps">
-                <h2>Next</h2>
+            <section id="rig-step">
+                <h2>Step 3 — Generate and Align the Rig</h2>
+                <ol>
+                    <li>Switch to the Rig tab</li>
+                    <li>Click <strong>Add Metarig (With Face)</strong> or <strong>Add Metarig (No Face)</strong> depending on your character</li>
+                    <li>Click <strong>Align Rig</strong> — every bone moves to match your marker positions</li>
+                    <li>Click <strong>Generate Rig</strong> — Rigify builds the final control rig</li>
+                </ol>
+            </section>
+
+            <section id="skin-step">
+                <h2>Step 4 — Bind Your Mesh</h2>
+                <ol>
+                    <li>Switch to the Skin tab</li>
+                    <li>Click <strong>Detect Meshes</strong> — Easy Rigify finds your body, clothing, eyes, and teeth meshes automatically</li>
+                    <li>Click <strong>Smart Bind</strong> — each mesh is attached to the rig with appropriate starting weights</li>
+                    <li>Use the <strong>Surgical Weight Fix</strong> presets to clean up any joint bleeding</li>
+                    <li>Use <strong>Symmetrize Weights</strong> if one side looks different from the other</li>
+                </ol>
+            </section>
+
+            <section id="done">
+                <h2>You're Done</h2>
+                <p>Your character now has a fully functional Rigify rig with weights applied. From here you can:</p>
                 <ul>
-                    <li><a href="markers.html">Placing markers in detail</a></li>
-                    <li><a href="rigging.html">The rigging workflow</a></li>
-                    <li><a href="skinning.html">Skinning and weight cleanup</a></li>
-                    <li><a href="features.html">All tools and features</a></li>
-                    <li><a href="troubleshooting.html">Common issues</a></li>
+                    <li>Fine-tune weights in Weight Paint mode using the tools in the Skin tab</li>
+                    <li>Add fan bones for better joint volume from the Tools tab</li>
+                    <li>Pose and animate your character using the Rigify control rig</li>
                 </ul>
+            </section>
+
+            <section id="help">
+                <h2>Need Help?</h2>
+                <p>Each tab in the panel has a Help button (top right) that opens an online guide for that section.</p>
+                <p>For bug reports, go to Edit → Preferences → Add-ons → Easy Rigify and click <strong>Report Bug</strong> — it opens a pre-filled email to the developer.</p>
             </section>
         </div>
     </div>

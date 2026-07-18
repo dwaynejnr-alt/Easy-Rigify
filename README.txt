@@ -58,6 +58,6 @@ TIPS
 FULL GUIDE
 ----------
 Easy Rigify Documentation
-https://www.notion.so/Easy-Rigify-Documentation-37019f42b1f880c3b748f0849675e3ea
+https://dwaynejnr-alt.github.io/Easy-Rigify/
 for detailed steps and troubleshooting.
 ===============================================================================

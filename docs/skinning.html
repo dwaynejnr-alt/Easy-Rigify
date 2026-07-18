@@ -3,251 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skinning - Easy Rigify</title>
+    <title>Skin - Easy Rigify</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="logo">Easy Rigify Docs</div>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
+    <div class="layout">
+        <nav class="sidenav">
+            <a href="index.html" class="title">Easy Rigify Docs</a>
+            <h5>Start</h5>
+            <ul>
+                <li><a href="index.html">Overview</a></li>
                 <li><a href="getting-started.html">Getting Started</a></li>
-                <li><a href="markers.html">Markers</a></li>
-                <li><a href="rigging.html">Rigging</a></li>
-                <li><a href="skinning.html" class="active">Skinning</a></li>
-                <li><a href="features.html">Features</a></li>
-                <li><a href="troubleshooting.html">FAQ</a></li>
             </ul>
-        </div>
-    </nav>
+            <h5>Workflow</h5>
+            <ul>
+                <li><a href="markers.html">Markers</a></li>
+                <li><a href="rigging.html">Rig</a></li>
+                <li><a href="skinning.html" class="active">Skin</a></li>
+                <li><a href="features.html">Tools</a></li>
+            </ul>
+            <h5>Help</h5>
+            <ul>
+                <li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+            </ul>
+        </nav>
 
-    <div class="container main-content">
-        <main>
-            <h1>Skinning & Weight Cleanup</h1>
-            <p class="page-intro">Skinning binds your mesh to the rig and defines how the mesh deforms when bones move. Easy Rigify provides automatic binding and comprehensive weight cleanup tools.</p>
+        <div class="content">
+            <h1>Skin</h1>
+            <p class="intro">Skinning binds your mesh to the rig and controls how it deforms as bones move.</p>
 
             <section id="binding">
                 <h2>Automatic Binding</h2>
-
-                <h3>What is Binding?</h3>
-                <p>Binding (also called "weight painting" setup) attaches your mesh to the rig by creating an Armature modifier and initial vertex weights.</p>
-
-                <h3>Bind Your Mesh</h3>
                 <ol>
                     <li>Select your character mesh</li>
-                    <li>Go to the <strong>Skin</strong> tab in Easy Rigify</li>
-                    <li>Click <strong>"Bind Mesh"</strong></li>
-                    <li>Easy Rigify will:
-                        <ul>
-                            <li>Create an Armature modifier</li>
-                            <li>Initialize weights based on bone proximity</li>
-                            <li>Set up basic vertex group assignments</li>
-                        </ul>
-                    </li>
+                    <li>Go to the Skin tab</li>
+                    <li>Click "Bind Mesh"</li>
                 </ol>
-
-                <div class="success-box">
-                    <strong>✅ Bound!</strong> Your mesh is now attached to the rig and will deform when you move bones.
-                </div>
+                <p>This creates an Armature modifier and initializes vertex weights based on bone proximity.</p>
             </section>
 
             <section id="weights">
                 <h2>Weight Cleanup</h2>
-
-                <h3>The Challenge</h3>
-                <p>Automatic binding creates a good starting point, but weight deformation often needs refinement. Areas like shoulders, elbows, wrists, and knees can look lumpy or collapse.</p>
+                <p>Automatic binding is a good starting point, but joints like shoulders, elbows, wrists, and knees usually need refinement.</p>
 
                 <h3>Tighten Weights</h3>
-                <p>Easy Rigify's weight tightener reduces unwanted deformation at joints.</p>
-
-                <h4>Using Tighten Weights</h4>
                 <ol>
-                    <li>Click <strong>"Tighten Weights"</strong></li>
-                    <li>Choose a preset:
-                        <ul>
-                            <li><strong>Gentle:</strong> Subtle tightening, less aggressive</li>
-                            <li><strong>Default:</strong> Balanced for most characters</li>
-                            <li><strong>Aggressive:</strong> Strong tightening for exaggerated rigs</li>
-                        </ul>
-                    </li>
-                    <li>Select which regions to process:
-                        <ul>
-                            <li>Fingers</li>
-                            <li>Forearms / Upper Arms</li>
-                            <li>Shoulders</li>
-                            <li>Shins / Thighs</li>
-                            <li>Spine / Neck</li>
-                        </ul>
-                    </li>
-                    <li>Click <strong>"Tighten"</strong></li>
+                    <li>Click "Tighten Weights"</li>
+                    <li>Choose a preset: <strong>Gentle</strong>, <strong>Default</strong>, or <strong>Aggressive</strong></li>
+                    <li>Select regions to process (fingers, forearms, upper arms, shoulders, shins, thighs, spine, neck)</li>
+                    <li>Click "Tighten"</li>
                 </ol>
-
-                <div class="info-box">
-                    <strong>💡 Tip:</strong> Start with "Default" and test. If joints still look bad, try "Aggressive". For stylized rigs, "Gentle" might be better.
+                <div class="note">
+                    Start with Default. For stylized rigs, try Gentle; for exaggerated proportions, Aggressive.
                 </div>
             </section>
 
             <section id="deformation">
-                <h2>Fixing Common Deformation Issues</h2>
+                <h2>Common Deformation Issues</h2>
 
-                <h3>Shoulder Collapse</h3>
-                <p><strong>Symptom:</strong> Mesh sinks in when you raise the arm.</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Use "Tighten Weights" on the Shoulder region</li>
-                    <li>Or manually paint weights on the shoulder area to reduce upper-arm influence</li>
-                </ul>
+                <div class="qa">
+                    <h3>Shoulder collapse</h3>
+                    <p>Mesh sinks in when the arm is raised. Tighten Weights on the Shoulder region, or manually reduce upper-arm influence near the shoulder.</p>
+                </div>
 
-                <h3>Elbow Pinching</h3>
-                <p><strong>Symptom:</strong> Forearm bends too sharply, looks creased.</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Use "Tighten Weights" on Forearms</li>
-                    <li>Manually paint a smooth transition between forearm and upper-arm weights</li>
-                </ul>
+                <div class="qa">
+                    <h3>Elbow pinching</h3>
+                    <p>Forearm creases too sharply. Tighten Weights on Forearms, or manually smooth the transition between forearm and upper-arm weights.</p>
+                </div>
 
-                <h3>Finger Deformation</h3>
-                <p><strong>Symptom:</strong> Fingers look twisted or collapse when bent.</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Use "Tighten Weights" on Fingers</li>
-                    <li>Use "Smooth Weights" to blend vertex weights smoothly</li>
-                </ul>
+                <div class="qa">
+                    <h3>Finger deformation</h3>
+                    <p>Fingers twist or collapse when bent. Tighten Weights on Fingers, then Smooth Weights to blend transitions.</p>
+                </div>
 
-                <h3>Joint Bleed</h3>
-                <p><strong>Symptom:</strong> Nearby geometry deforms when it shouldn't (mesh from shoulder deforms with arm).</p>
-                <p><strong>Solution:</strong></p>
-                <ul>
-                    <li>Click <strong>"Analyze Joint Bleed"</strong> to find problem areas</li>
-                    <li>Click <strong>"Repair Joint Bleed"</strong> to automatically fix them</li>
-                </ul>
+                <div class="qa">
+                    <h3>Joint bleed</h3>
+                    <p>Nearby geometry deforms when it shouldn't. Run "Analyze Joint Bleed" to find problem areas, then "Repair Joint Bleed" to fix them.</p>
+                </div>
             </section>
 
             <section id="tools">
                 <h2>Weight Tools</h2>
-
-                <h3>Smooth Weights</h3>
-                <p>Smooths weight transitions across the mesh, reducing hard edges and creases.</p>
                 <ul>
-                    <li>Select the mesh</li>
-                    <li>Click <strong>"Smooth Weights"</strong></li>
-                    <li>Adjust strength (1-10, higher = more smooth)</li>
-                </ul>
-
-                <h3>Mirror Weights</h3>
-                <p>Copy weights from the left side to the right (or vice versa).</p>
-                <ul>
-                    <li>Go to <strong>Tools</strong> tab</li>
-                    <li>Click <strong>"Mirror Weights"</strong></li>
-                    <li>Choose direction: L→R or R→L</li>
-                </ul>
-
-                <h3>Prune Weights</h3>
-                <p>Remove very small weight values that don't contribute to deformation.</p>
-                <ul>
-                    <li>Click <strong>"Prune Weights"</strong></li>
-                    <li>Threshold: Remove influences below this value (default 0.01)</li>
-                </ul>
-
-                <h3>Weight Paint Entry/Exit</h3>
-                <p>Toggle weight paint mode quickly.</p>
-                <ul>
-                    <li>Click <strong>"Enter Weight Paint"</strong> to start painting</li>
-                    <li>Click <strong>"Exit Weight Paint"</strong> to return to Object Mode</li>
+                    <li><strong>Smooth Weights</strong> — blends weight transitions to reduce hard edges</li>
+                    <li><strong>Mirror Weights</strong> — copies weights left↔right</li>
+                    <li><strong>Prune Weights</strong> — removes negligible weight values below a threshold</li>
+                    <li><strong>Enter / Exit Weight Paint</strong> — quick toggle into and out of paint mode</li>
                 </ul>
             </section>
 
             <section id="manual-painting">
                 <h2>Manual Weight Painting</h2>
-
-                <h3>When to Use It</h3>
-                <p>Automated tools handle most cases, but some areas need hand-tuning:</p>
-                <ul>
-                    <li>Unusual character proportions</li>
-                    <li>Stylized deformation (exaggerated secondary shapes)</li>
-                    <li>Problem areas that tools couldn't fix</li>
-                </ul>
-
-                <h3>Basic Workflow</h3>
+                <p>Automated tools handle most cases, but unusual proportions or stylized deformation sometimes need hand-tuning.</p>
                 <ol>
-                    <li>Click <strong>"Enter Weight Paint"</strong> in the Tools tab</li>
-                    <li>Switch to Weight Paint Mode (top-right of 3D Viewport)</li>
+                    <li>Click "Enter Weight Paint" in the Tools tab</li>
                     <li>Select a bone from the Outliner or armature</li>
-                    <li>Paint to increase/decrease influence on that bone</li>
-                    <li>Use the brush settings to adjust size and strength</li>
-                    <li>Click <strong>"Exit Weight Paint"</strong> when done</li>
+                    <li>Paint to increase or decrease influence on that bone</li>
+                    <li>Click "Exit Weight Paint" when done</li>
                 </ol>
-
-                <div class="info-box">
-                    <strong>💡 Brush Tips:</strong>
-                    <ul>
-                        <li>Hold Shift to decrease weights (invert mode)</li>
-                        <li>Use [ and ] to scale brush size up/down</li>
-                        <li>Use lower Strength (opacity) for subtle adjustments</li>
-                    </ul>
+                <div class="note">
+                    Hold Shift to invert the brush (decrease weights). Use <code>[</code> / <code>]</code> to resize the brush.
                 </div>
             </section>
 
             <section id="testing">
-                <h2>Testing Your Rig</h2>
-
-                <h3>Pose Mode Testing</h3>
-                <ol>
-                    <li>Select the rig armature</li>
-                    <li>Press <code>Tab</code> to enter Pose Mode</li>
-                    <li>Grab bones (G key) and move them to see deformation</li>
-                    <li>Look for problem areas (collapsing joints, excessive bleeding)</li>
-                </ol>
-
-                <h3>Common Test Poses</h3>
-                <ul>
-                    <li><strong>T-Pose:</strong> Raise arms straight out (should stay flat)</li>
-                    <li><strong>Bend Elbows:</strong> Flex arms (watch elbow crease)</li>
-                    <li><strong>Bend Knees:</strong> Squat down (watch kneecap and thigh roll)</li>
-                    <li><strong>Raise Shoulders:</strong> Shrug (should deform shoulder area only)</li>
-                    <li><strong>Close Fist:</strong> Flex fingers (watch hand and wrist)</li>
-                </ul>
-
-                <h3>Iterating</h3>
-                <ol>
-                    <li>Exit Pose Mode (Tab)</li>
-                    <li>Adjust weights using paint tools</li>
-                    <li>Return to Pose Mode and test again</li>
-                    <li>Repeat until satisfied</li>
-                </ol>
+                <h2>Testing the Rig</h2>
+                <p>Select the armature, press <code>Tab</code> for Pose Mode, and test a few positions: T-pose, bent elbows, bent knees, shoulder shrug, closed fist. Exit Pose Mode, adjust weights, and re-test until deformation looks right.</p>
             </section>
-
-            <section id="next">
-                <h2>Next Steps</h2>
-                <ul>
-                    <li><a href="features.html">Learn about viewer helpers and other tools</a></li>
-                    <li><a href="troubleshooting.html">See solutions for common skinning problems</a></li>
-                    <li>Start animating! Your rig is now ready for motion</li>
-                </ul>
-            </section>
-
-        </main>
-
-        <aside class="sidebar">
-            <div class="sidebar-section">
-                <h4>On This Page</h4>
-                <ul>
-                    <li><a href="#binding">Binding</a></li>
-                    <li><a href="#weights">Weight Cleanup</a></li>
-                    <li><a href="#deformation">Fix Issues</a></li>
-                    <li><a href="#tools">Weight Tools</a></li>
-                    <li><a href="#manual-painting">Manual Painting</a></li>
-                    <li><a href="#testing">Testing</a></li>
-                </ul>
-            </div>
-        </aside>
-    </div>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
         </div>
-    </footer>
+    </div>
 </body>
 </html>

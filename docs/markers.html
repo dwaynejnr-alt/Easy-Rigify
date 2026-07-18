@@ -3,181 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Placing Markers - Easy Rigify</title>
+    <title>Markers - Easy Rigify</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="logo">Easy Rigify Docs</div>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
+    <div class="layout">
+        <nav class="sidenav">
+            <a href="index.html" class="title">Easy Rigify Docs</a>
+            <h5>Start</h5>
+            <ul>
+                <li><a href="index.html">Overview</a></li>
                 <li><a href="getting-started.html">Getting Started</a></li>
-                <li><a href="markers.html" class="active">Markers</a></li>
-                <li><a href="rigging.html">Rigging</a></li>
-                <li><a href="skinning.html">Skinning</a></li>
-                <li><a href="features.html">Features</a></li>
-                <li><a href="troubleshooting.html">FAQ</a></li>
             </ul>
-        </div>
-    </nav>
+            <h5>Workflow</h5>
+            <ul>
+                <li><a href="markers.html" class="active">Markers</a></li>
+                <li><a href="rigging.html">Rig</a></li>
+                <li><a href="skinning.html">Skin</a></li>
+                <li><a href="features.html">Tools</a></li>
+            </ul>
+            <h5>Help</h5>
+            <ul>
+                <li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+            </ul>
+        </nav>
 
-    <div class="container main-content">
-        <main>
-            <h1>Placing Markers</h1>
-            <p class="page-intro">Markers are the foundation of Easy Rigify. They tell the addon where each joint on your character should be. You can place them automatically with detection, or manually for complete control.</p>
+        <div class="content">
+            <h1>Markers</h1>
+            <p class="intro">Markers tell the addon where each joint on your character should be. Place them automatically with detection, or manually for full control.</p>
 
             <section id="body">
                 <h2>Body Markers</h2>
-                <p>Body markers define the spine, arms, legs, and feet of your character.</p>
+                <p>Body markers define the spine, arms, legs, and feet.</p>
 
-                <h3>Auto-Detect (Geometric)</h3>
-                <ul>
-                    <li>Works on any humanoid shape</li>
-                    <li>Fast and reliable</li>
-                    <li>Reads the mesh geometry</li>
-                </ul>
+                <h3>Auto Detect (geometric)</h3>
+                <p>Reads the mesh geometry directly. Works on any humanoid shape, fast and deterministic. Available in both editions.</p>
 
-                <h3>EasyDetect (AI) - Full Edition</h3>
-                <ul>
-                    <li>Uses trained neural network</li>
-                    <li>Better on unusual proportions</li>
-                    <li>Handles stylized characters</li>
-                </ul>
+                <h3>EasyDetect (AI, Full Edition)</h3>
+                <p>Uses a trained neural network. More accurate on unusual proportions and stylized characters.</p>
 
-                <h3>Manual Placement</h3>
-                <p>Click the "Place Body Markers" button and follow the on-screen hints. Each marker lights up when selected.</p>
+                <h3>Manual placement</h3>
+                <p>Click "Place Body Markers" and follow the on-screen hints. The selected marker is highlighted.</p>
 
-                <div class="info-box">
-                    <strong>💡 Tip:</strong> If auto-detection isn't quite right, grab a marker (press G) and nudge it into place. The addon will snap it to the nearest relevant geometry.
+                <div class="note">
+                    If auto-detection isn't quite right, grab a marker (<code>G</code>) and nudge it into place.
                 </div>
             </section>
 
             <section id="fingers">
                 <h2>Finger Markers</h2>
-                <p>Fingers can be placed in one click with AI detection, or manually with a fast two-click workflow.</p>
 
-                <h3>One-Click Detection (AI) - Full Edition</h3>
-                <p>Click "EasyDetect Fingers" and all hand and finger joints are placed automatically.</p>
+                <h3>One-click detection (AI, Full Edition)</h3>
+                <p>Click "EasyDetect Fingers" — all hand and finger joints are placed automatically.</p>
 
-                <h3>Two-Click Per Finger (Manual)</h3>
+                <h3>Two-click per finger (manual)</h3>
                 <ol>
                     <li>Click "Place Fingers"</li>
-                    <li>For each finger: <strong>First click = tip</strong>, <strong>Second click = knuckle</strong></li>
-                    <li>Middle joints are interpolated automatically</li>
+                    <li>For each finger: first click = tip, second click = knuckle</li>
+                    <li>Middle joints are interpolated</li>
                     <li>The right hand mirrors from the left</li>
                 </ol>
 
-                <h3>Per-Finger Picker</h3>
-                <p>Need to redo just the thumb? Use the per-finger picker to place individual fingers without redoing the whole hand.</p>
+                <h3>Per-finger picker</h3>
+                <p>Redo a single finger (e.g. the thumb) without redoing the whole hand.</p>
 
-                <div class="info-box">
-                    <strong>ℹ️ Note:</strong> Fingers are detected independently from the wrist marker, so the wrist can be adjusted without affecting finger placement.
+                <div class="note">
+                    Fingers are detected independently from the wrist marker — adjusting the wrist doesn't affect finger placement.
                 </div>
             </section>
 
             <section id="face">
                 <h2>Face Markers</h2>
-                <p>Face markers detect brows, eyes, eyelids, lips, nose, cheeks, chin, jaw, and forehead.</p>
+                <p>Covers brows, eyes, eyelids, lips, nose, cheeks, chin, jaw, and forehead.</p>
 
-                <h3>One-Click Detection (AI) - Full Edition</h3>
-                <p>Click "EasyDetect Face" to automatically place all facial markers.</p>
+                <h3>One-click detection (AI, Full Edition)</h3>
+                <p>Click "EasyDetect Face" to place all facial markers at once.</p>
 
-                <h3>Section-by-Section (Manual)</h3>
-                <p>Detect each facial region separately for more control:</p>
+                <h3>Section-by-section (manual)</h3>
                 <ul>
-                    <li><strong>Eyes</strong> — Requires separate eye mesh objects</li>
-                    <li><strong>Brows</strong> — Requires separate eyebrow mesh</li>
-                    <li><strong>Lips</strong> — Requires teeth and tongue meshes</li>
-                    <li><strong>Nose & Cheeks</strong> — Automatically detected from head</li>
-                    <li><strong>Chin & Jaw</strong> — Deform bone placement</li>
+                    <li><strong>Eyes</strong> — needs a separate eye mesh object</li>
+                    <li><strong>Brows</strong> — needs a separate eyebrow mesh</li>
+                    <li><strong>Lips</strong> — needs teeth and tongue meshes</li>
+                    <li><strong>Nose &amp; cheeks</strong> — detected from the head mesh</li>
+                    <li><strong>Chin &amp; jaw</strong> — deform bone placement</li>
                 </ul>
 
-                <div class="warning-box">
-                    <strong>⚠️ Setup Note:</strong> For best results, set up separate objects for:
-                    <ul>
-                        <li>Eyes (eyeball geometry)</li>
-                        <li>Eyebrows (separate mesh)</li>
-                        <li>Teeth (separate mesh)</li>
-                        <li>Tongue (separate mesh)</li>
-                    </ul>
-                    If you don't have these, the detection will use fallbacks.
+                <div class="note warn">
+                    For best results, set up separate objects for eyes, eyebrows, teeth, and tongue. Without them, detection falls back to estimates.
                 </div>
             </section>
 
             <section id="editing">
                 <h2>Editing Markers</h2>
-
-                <h3>Move a Marker</h3>
                 <ul>
-                    <li>Press <code>G</code> to grab/move</li>
-                    <li>Move your mouse to reposition</li>
-                    <li>Press <code>X</code>, <code>Y</code>, or <code>Z</code> to constrain to an axis</li>
-                    <li>Click to confirm</li>
-                </ul>
-
-                <h3>Show/Hide Markers</h3>
-                <p>Toggle "Show / Hide Markers" in the Markers panel to see or hide all markers and their connecting lines.</p>
-
-                <h3>Validate Markers</h3>
-                <p>Click "Check All Markers" to verify:</p>
-                <ul>
-                    <li>All required markers are placed</li>
-                    <li>No markers are overlapping</li>
-                    <li>No markers are outside your mesh</li>
+                    <li>Press <code>G</code> to grab/move a marker, <code>X</code>/<code>Y</code>/<code>Z</code> to constrain to an axis</li>
+                    <li>Toggle "Show / Hide Markers" to hide markers and connecting lines together</li>
+                    <li>Click "Check All Markers" to confirm every required marker is placed, and flag anything overlapping or outside the mesh</li>
                 </ul>
             </section>
 
             <section id="symmetry">
-                <h2>Live Symmetry & Mirroring</h2>
-
-                <h3>Mirror Markers</h3>
-                <p>Copy all markers from left to right (or vice versa) in one click.</p>
-                <ul>
-                    <li>Click "Mirror L→R" to copy left side to right</li>
-                    <li>Click "Mirror R→L" to copy right side to left</li>
-                </ul>
-
-                <h3>Live Symmetry</h3>
-                <p>Enable "Live Symmetry" to edit one side and see changes mirror in real time across your character's symmetry plane.</p>
-
-                <div class="info-box">
-                    <strong>💡 Tip:</strong> Live Symmetry is great for fine-tuning both sides simultaneously. Disable it for asymmetrical characters.
+                <h2>Mirroring &amp; Live Symmetry</h2>
+                <p>"Mirror L→R" / "Mirror R→L" copies all markers from one side to the other in one click.</p>
+                <p>"Live Symmetry" mirrors edits in real time — move a marker on one side and its counterpart moves with it across the character's symmetry plane.</p>
+                <div class="note">
+                    Disable Live Symmetry for asymmetrical characters.
                 </div>
             </section>
-
-            <section id="tips">
-                <h2>Best Practices</h2>
-                <ul>
-                    <li><strong>Start in a clean pose:</strong> T-pose or A-pose with applied transforms</li>
-                    <li><strong>Auto-detect first:</strong> Use detection, then adjust manually if needed</li>
-                    <li><strong>Check markers before rigging:</strong> Bad marker placement = bad rig alignment</li>
-                    <li><strong>Marker size:</strong> Markers scale themselves to your character; they should look "right" proportionally</li>
-                    <li><strong>Use Live Symmetry:</strong> Faster than manual mirroring for bilateral editing</li>
-                </ul>
-            </section>
-
-        </main>
-
-        <aside class="sidebar">
-            <div class="sidebar-section">
-                <h4>On This Page</h4>
-                <ul>
-                    <li><a href="#body">Body Markers</a></li>
-                    <li><a href="#fingers">Finger Markers</a></li>
-                    <li><a href="#face">Face Markers</a></li>
-                    <li><a href="#editing">Editing Markers</a></li>
-                    <li><a href="#symmetry">Mirroring</a></li>
-                    <li><a href="#tips">Best Practices</a></li>
-                </ul>
-            </div>
-        </aside>
-    </div>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
         </div>
-    </footer>
+    </div>
 </body>
 </html>

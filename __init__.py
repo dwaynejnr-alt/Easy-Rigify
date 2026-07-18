@@ -168,10 +168,10 @@ if _DEV_BUILD:
 # ── Help opener ──────────────────────────────────────────────────────────────
 
 _HELP_URLS = {
-    'MARKERS': "https://www.notion.so/Markers-Tab-37019f42b1f880e2bb8ee038cf95304d",
-    'RIG':     "https://www.notion.so/Rig-Tab-37019f42b1f8806d9fe4d39480129702",
-    'SKIN':    "https://www.notion.so/Skin-Tab-37019f42b1f880569f5dccda43dfa8cd",
-    'TOOLS':   "https://www.notion.so/Tools-Tab-37019f42b1f8809fab61c7fd6608f6be",
+    'MARKERS': "https://dwaynejnr-alt.github.io/Easy-Rigify/markers.html",
+    'RIG':     "https://dwaynejnr-alt.github.io/Easy-Rigify/rigging.html",
+    'SKIN':    "https://dwaynejnr-alt.github.io/Easy-Rigify/skinning.html",
+    'TOOLS':   "https://dwaynejnr-alt.github.io/Easy-Rigify/features.html",
 }
 
 class AUTORIG_OT_OpenHelp(bpy.types.Operator):

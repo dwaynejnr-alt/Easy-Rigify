@@ -7,204 +7,140 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="container">
-            <div class="logo">Easy Rigify Docs</div>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
+    <div class="layout">
+        <nav class="sidenav">
+            <a href="index.html" class="title">Easy Rigify Docs</a>
+            <h5>Start</h5>
+            <ul>
+                <li><a href="index.html">Overview</a></li>
                 <li><a href="getting-started.html" class="active">Getting Started</a></li>
-                <li><a href="markers.html">Markers</a></li>
-                <li><a href="rigging.html">Rigging</a></li>
-                <li><a href="skinning.html">Skinning</a></li>
-                <li><a href="features.html">Features</a></li>
-                <li><a href="troubleshooting.html">FAQ</a></li>
             </ul>
-        </div>
-    </nav>
+            <h5>Workflow</h5>
+            <ul>
+                <li><a href="markers.html">Markers</a></li>
+                <li><a href="rigging.html">Rig</a></li>
+                <li><a href="skinning.html">Skin</a></li>
+                <li><a href="features.html">Tools</a></li>
+            </ul>
+            <h5>Help</h5>
+            <ul>
+                <li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+            </ul>
+        </nav>
 
-    <div class="container main-content">
-        <main>
+        <div class="content">
             <h1>Getting Started</h1>
 
             <section id="requirements">
                 <h2>Requirements</h2>
-                <ul class="requirements-list">
-                    <li><strong>Blender 4.2 or newer</strong> — The addon uses features from Blender 4.2 and later.</li>
-                    <li><strong>Rigify addon enabled</strong> — Built into Blender. Enable it in Preferences → Add-ons.</li>
-                    <li><strong>No internet connection needed</strong> — Everything runs locally on your machine.</li>
-                    <li><strong>Humanoid mesh</strong> — Works on realistic scans, stylized characters, any scale.</li>
+                <ul>
+                    <li><strong>Blender 4.2 or newer</strong> — the addon uses features from Blender 4.2 and later.</li>
+                    <li><strong>Rigify enabled</strong> — built into Blender; enable it in Preferences → Add-ons.</li>
+                    <li><strong>No internet connection needed</strong> — everything runs locally.</li>
+                    <li><strong>Humanoid mesh</strong> — realistic scans, stylized characters, any scale.</li>
                 </ul>
             </section>
 
             <section id="editions">
-                <h2>Choosing Your Edition</h2>
-                <p>Easy Rigify comes in two editions that work together seamlessly.</p>
-
-                <div class="edition-comparison">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Feature</th>
-                                <th>Full Edition</th>
-                                <th>Lite Edition</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>Body Detection (AI)</strong></td>
-                                <td>✅ Yes</td>
-                                <td>❌ No</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Body Detection (Geometric)</strong></td>
-                                <td>✅ Yes</td>
-                                <td>✅ Yes</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Finger Detection (AI)</strong></td>
-                                <td>✅ Yes</td>
-                                <td>❌ No</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Face Detection (AI)</strong></td>
-                                <td>✅ Yes</td>
-                                <td>❌ No</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Manual Marker Placement</strong></td>
-                                <td>✅ Yes</td>
-                                <td>✅ Yes</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Full Rigging Pipeline</strong></td>
-                                <td>✅ Yes</td>
-                                <td>✅ Yes</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Skinning Tools</strong></td>
-                                <td>✅ Yes</td>
-                                <td>✅ Yes</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Download Size</strong></td>
-                                <td>~50 MB</td>
-                                <td>~1 MB</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="info-box">
-                    <strong>💡 Tip:</strong> Files saved in the Full Edition open in Lite and use the geometric engine. Both editions can't be installed at the same time, but your workflows are compatible.
+                <h2>Editions</h2>
+                <p>Easy Rigify comes in two editions that work together.</p>
+                <table>
+                    <thead>
+                        <tr><th>Feature</th><th>Full Edition</th><th>Lite Edition</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Body detection (AI)</td><td>Yes</td><td>No</td></tr>
+                        <tr><td>Body detection (geometric)</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Finger detection (AI)</td><td>Yes</td><td>No</td></tr>
+                        <tr><td>Face detection (AI)</td><td>Yes</td><td>No</td></tr>
+                        <tr><td>Manual marker placement</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Full rigging pipeline</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Skinning tools</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Download size</td><td>~50 MB</td><td>~1 MB</td></tr>
+                    </tbody>
+                </table>
+                <div class="note">
+                    Files saved in the Full Edition open in Lite and use the geometric engine. Both editions can't be installed at the same time, but scenes are compatible.
                 </div>
             </section>
 
             <section id="install">
                 <h2>Installation</h2>
 
-                <h3>Step 1: Download</h3>
-                <p>Download the latest version from <a href="https://github.com/dwaynejnr-alt/Easy-Rigify/releases" target="_blank">GitHub Releases</a>.</p>
+                <h3>1. Download</h3>
+                <p>Get the latest version from <a href="https://github.com/dwaynejnr-alt/Easy-Rigify/releases" target="_blank">GitHub Releases</a>.</p>
 
-                <h3>Step 2: Install in Blender</h3>
+                <h3>2. Install in Blender</h3>
                 <ol>
                     <li>Open Blender</li>
                     <li>Go to <code>Edit → Preferences</code></li>
-                    <li>Click <code>Get Extensions</code> (Blender 4.2+)</li>
-                    <li>Click the dropdown and select <code>Install from Disk...</code></li>
-                    <li>Browse to the downloaded zip file and select it</li>
+                    <li>Click <code>Get Extensions</code></li>
+                    <li>Open the dropdown and select <code>Install from Disk...</code></li>
+                    <li>Browse to the downloaded zip and select it</li>
                     <li>Click <code>Install Extension</code></li>
                 </ol>
 
-                <h3>Step 3: Enable the Addon</h3>
+                <h3>3. Enable</h3>
                 <ol>
-                    <li>In the Extensions list, search for "Easy Rigify"</li>
-                    <li>Check the box next to it to enable</li>
-                    <li>The AI runtime (Full Edition) will load automatically</li>
-                    <li>You'll see a new "Easy Rigify" tab in the 3D Viewport sidebar (press <code>N</code>)</li>
+                    <li>Search for "Easy Rigify" in the Extensions list</li>
+                    <li>Check the box to enable it</li>
+                    <li>The AI runtime (Full Edition) loads automatically</li>
+                    <li>A new "Easy Rigify" tab appears in the 3D Viewport sidebar (press <code>N</code>)</li>
                 </ol>
 
-                <div class="info-box">
-                    <strong>ℹ️ Note:</strong> On first load, the full edition downloads the AI runtime (~100 MB). This only happens once. If the AI fails to load on your platform, the geometric detectors still work.
+                <div class="note">
+                    On first load, the full edition downloads the AI runtime once. If it can't load on your platform, the geometric detectors still work.
                 </div>
             </section>
 
             <section id="quickstart">
-                <h2>Quick Start (15 minutes)</h2>
+                <h2>Quick Start</h2>
 
-                <h3>1. Prepare Your Model</h3>
+                <h3>1. Prepare your model</h3>
                 <ul>
                     <li>Apply all transforms: <code>Object → Apply → All Transforms</code></li>
-                    <li>Make sure your mesh is in a T-pose or A-pose</li>
-                    <li>Select your character mesh in the 3D Viewport</li>
+                    <li>Put the mesh in a T-pose or A-pose</li>
+                    <li>Select the character mesh</li>
                 </ul>
 
-                <h3>2. Open Easy Rigify Panel</h3>
+                <h3>2. Place markers</h3>
                 <ul>
-                    <li>Press <code>N</code> to open the sidebar</li>
-                    <li>Look for the "Easy Rigify" tab</li>
-                    <li>You'll see four tabs: Markers, Rig, Skin, Tools</li>
+                    <li>Press <code>N</code>, open the "Easy Rigify" tab, go to Markers</li>
+                    <li>Set your mesh as "Body Mesh"</li>
+                    <li>Click "Auto Detect Body" (geometric) or "EasyDetect Body" (AI)</li>
+                    <li>Nudge any markers that are off, then click "Check All Markers"</li>
                 </ul>
 
-                <h3>3. Place Markers</h3>
+                <h3>3. Generate the rig</h3>
                 <ul>
-                    <li>Set your character mesh as "Body Mesh" in the Markers tab</li>
-                    <li>Click "Auto Detect Body" (geometric) or "EasyDetect Body" (AI, full edition)</li>
-                    <li>Review the placed markers and nudge any that are off</li>
-                    <li>Click "Check All Markers" to validate</li>
+                    <li>Go to the Rig tab</li>
+                    <li>Click "Align Rig to Markers", then "Generate Rig"</li>
                 </ul>
 
-                <h3>4. Generate the Rig</h3>
+                <h3>4. Skin the mesh</h3>
                 <ul>
-                    <li>Go to the "Rig" tab</li>
-                    <li>Click "Align Rig to Markers"</li>
-                    <li>Click "Generate Rig"</li>
-                    <li>Your Rigify rig is now ready</li>
-                </ul>
-
-                <h3>5. Skin Your Mesh</h3>
-                <ul>
-                    <li>Go to the "Skin" tab</li>
-                    <li>Click "Bind Mesh" to create armature modifier</li>
+                    <li>Go to the Skin tab</li>
+                    <li>Click "Bind Mesh"</li>
                     <li>Click "Tighten Weights" to clean up deformation</li>
                     <li>Use "Paint Weights" to fine-tune problem areas</li>
                 </ul>
 
-                <div class="success-box">
-                    <strong>✅ Done!</strong> You now have a production-ready rigged character.
+                <div class="note done">
+                    That's a complete, riggable character. See the section pages below for details on each step.
                 </div>
             </section>
 
             <section id="next-steps">
-                <h2>Next Steps</h2>
+                <h2>Next</h2>
                 <ul>
-                    <li><a href="markers.html">Learn how to place markers precisely</a></li>
-                    <li><a href="rigging.html">Understand the rigging workflow</a></li>
-                    <li><a href="skinning.html">Master skinning and weight cleanup</a></li>
-                    <li><a href="features.html">Explore all features and tools</a></li>
-                    <li><a href="troubleshooting.html">See common issues and solutions</a></li>
+                    <li><a href="markers.html">Placing markers in detail</a></li>
+                    <li><a href="rigging.html">The rigging workflow</a></li>
+                    <li><a href="skinning.html">Skinning and weight cleanup</a></li>
+                    <li><a href="features.html">All tools and features</a></li>
+                    <li><a href="troubleshooting.html">Common issues</a></li>
                 </ul>
             </section>
-
-        </main>
-
-        <aside class="sidebar">
-            <div class="sidebar-section">
-                <h4>On This Page</h4>
-                <ul>
-                    <li><a href="#requirements">Requirements</a></li>
-                    <li><a href="#editions">Editions</a></li>
-                    <li><a href="#install">Installation</a></li>
-                    <li><a href="#quickstart">Quick Start</a></li>
-                    <li><a href="#next-steps">Next Steps</a></li>
-                </ul>
-            </div>
-        </aside>
-    </div>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 Easy Rigify. Made for Blender character artists.</p>
         </div>
-    </footer>
+    </div>
 </body>
 </html>

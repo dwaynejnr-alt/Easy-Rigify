@@ -22,6 +22,16 @@ def fail(msg):
 def ok(msg):
     print(f"[OK] {msg}")
 
+def act_fcurves(act):
+    """Action fcurves across versions (legacy .fcurves removed in 5.x)."""
+    if hasattr(act, "fcurves"):
+        return act.fcurves
+    for layer in act.layers:
+        for strip in layer.strips:
+            for bag in strip.channelbags:
+                return bag.fcurves
+    return ()
+
 # ── load game_export.py as a package module (it does `from .constants import dbg`)
 pkg = types.ModuleType("erpkg")
 pkg.__path__ = []
@@ -117,7 +127,7 @@ if clean is None:
 if not (clean.animation_data and clean.animation_data.action):
     fail("clean skeleton has no baked action")
 ok(f"baked action: {clean.animation_data.action.name}, "
-   f"{len(clean.animation_data.action.fcurves)} fcurves")
+   f"{len(act_fcurves(clean.animation_data.action))} fcurves")
 
 # ── the baked lowerarm_l must track DEF-forearm.L's world position
 for frame in (1, 20):
@@ -193,6 +203,51 @@ ok(f"strip_face: {stats2['face_stripped']} face bones removed "
    f"(worst drift {worst:.2e})")
 os.remove(FBX2)
 
+# ── multi-action + preserve-twist: every action becomes a clip, twist bones
+# survive as UE twist bones with the Mannequin chain structure
+clean_prev = bpy.data.objects.get("GAME_SKELETON")
+if clean_prev:
+    for o in list(bpy.data.objects):
+        if o.parent == clean_prev:
+            bpy.data.objects.remove(o, do_unlink=True)
+    bpy.data.objects.remove(clean_prev, do_unlink=True)
+# second action on the rig
+first_act = rig.animation_data.action
+act2 = bpy.data.actions.new("clip_two")
+rig.animation_data.action = act2
+pb_root = rig.pose.bones["root"]
+pb_root.location = (0, 0, 0)
+pb_root.keyframe_insert("location", frame=1)
+pb_root.location = (0.2, 0, 0)
+pb_root.keyframe_insert("location", frame=10)
+rig.animation_data.action = first_act
+
+FBX3 = os.path.join(OUT_DIR, "anim_bake_test_multi.fbx")
+okflag, msg, stats3 = ge.build_and_export(
+    bpy.context, FBX3, target='UNREAL', keep_in_scene=True,
+    all_actions=True, preserve_twist=True)
+print(f"multi+twist -> {okflag}: {msg}")
+if not okflag:
+    fail(msg)
+if stats3.get("actions") != 2:
+    print("  all actions:", [a.name for a in bpy.data.actions])
+    print("  matched:", [a.name for a in ge._actions_for_rig(rig)])
+    fail(f"expected 2 baked actions, got {stats3.get('actions')}")
+clean3 = bpy.data.objects.get("GAME_SKELETON")
+names3 = {b.name for b in clean3.data.bones}
+for need in ("upperarm_twist_01_l", "lowerarm_twist_01_l",
+             "thigh_twist_01_r", "calf_twist_01_l"):
+    if need not in names3:
+        fail(f"preserve_twist missing {need}")
+if clean3.data.bones["lowerarm_l"].parent.name != "upperarm_l":
+    fail("lowerarm_l should parent to upperarm_l in twist mode")
+if clean3.data.bones["upperarm_twist_01_l"].parent.name != "upperarm_l":
+    fail("upperarm_twist_01_l should be a child of upperarm_l")
+if len(clean3.animation_data.nla_tracks) != 2:
+    fail(f"expected 2 NLA strips, got {len(clean3.animation_data.nla_tracks)}")
+ok(f"multi-action + preserve-twist: {stats3['actions']} clips, "
+   f"{stats3['bones']} bones incl. UE twist bones, Mannequin chain structure")
+
 # ── FBX file exists and reimports with animation
 if not os.path.isfile(FBX_PATH) or os.path.getsize(FBX_PATH) < 10000:
     fail("FBX missing or suspiciously small")
@@ -211,5 +266,19 @@ for need in ("root", "pelvis", "upperarm_l", "lowerarm_l", "calf_r", "head"):
         fail(f"reimport missing bone {need}")
 ok(f"FBX reimport: {len(arm.data.bones)} bones, {len(bpy.data.actions)} action(s), "
    f"size {os.path.getsize(FBX_PATH)//1024} KB")
+
+# multi-action FBX round-trip: both clips and the twist bones must survive
+bpy.ops.wm.read_homefile(use_empty=True)
+bpy.ops.import_scene.fbx(filepath=FBX3)
+arms3 = [o for o in bpy.data.objects if o.type == 'ARMATURE']
+if len(arms3) != 1:
+    fail(f"multi reimport: expected 1 armature, got {len(arms3)}")
+if len(bpy.data.actions) < 2:
+    fail(f"multi reimport: expected 2+ actions, got {len(bpy.data.actions)}")
+names_r = {b.name for b in arms3[0].data.bones}
+if "upperarm_twist_01_l" not in names_r:
+    fail("multi reimport lost the twist bones")
+ok(f"multi-action FBX reimport: {len(bpy.data.actions)} actions, twist bones intact")
+os.remove(FBX3)
 
 print("\nALL CHECKS PASSED")

@@ -20,6 +20,7 @@
 # dev/spike_retarget.py (0.0000 deg / 0.000000 m wrist error).
 import bpy
 import math
+import os
 from mathutils import Matrix, Vector
 from .constants import dbg, LITE_BUILD
 
@@ -552,6 +553,79 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
                   f"{stats['bones']} controls -> action '{new_act.name}'"), stats
 
 
+def run_batch_retarget(context, rig, folder, mapping_pairs=None,
+                       in_place=False, align_rests=True):
+    """Import every FBX/BVH clip in `folder`, retarget each onto the rig as
+    its own action (named after the file), and remove the imported source.
+    mapping_pairs: optional custom mapping (from the editor / JSON) applied to
+    every clip; otherwise each clip is auto-mapped.
+    Returns [(filename, ok, message)]."""
+    results = []
+    try:
+        files = sorted(f for f in os.listdir(folder)
+                       if f.lower().endswith((".fbx", ".bvh")))
+    except OSError as e:
+        return [(folder, False, str(e))]
+    for fname in files:
+        path = os.path.join(folder, fname)
+        objs_before = set(bpy.data.objects)
+        acts_before = set(bpy.data.actions)
+        try:
+            if fname.lower().endswith(".fbx"):
+                bpy.ops.import_scene.fbx(filepath=path)
+            else:
+                bpy.ops.import_anim.bvh(filepath=path)
+        except Exception as e:
+            results.append((fname, False, f"import failed: {e}"))
+            continue
+        new_objs = [o for o in bpy.data.objects if o not in objs_before]
+        src = next((o for o in new_objs
+                    if o.type == 'ARMATURE' and o.animation_data
+                    and o.animation_data.action), None)
+        if src is None:
+            _remove_imported(new_objs, acts_before)
+            results.append((fname, False, "no animated armature in file"))
+            continue
+        if mapping_pairs:
+            mapping = mapping_from_pairs(rig, mapping_pairs)
+        else:
+            mapping = build_mapping(src, rig)
+        ok, msg, _stats = run_retarget(context, src, rig, mapping,
+                                       in_place=in_place,
+                                       align_rests=align_rests)
+        if ok and rig.animation_data and rig.animation_data.action:
+            rig.animation_data.action.name = os.path.splitext(fname)[0]
+        _remove_imported(new_objs, acts_before)
+        results.append((fname, ok, msg))
+        dbg(f"[retarget-batch] {fname}: {'OK' if ok else 'FAIL'} — {msg}")
+    return results
+
+
+def _remove_imported(objs, acts_before):
+    """Delete imported clip objects, their datablocks, and their actions."""
+    for o in objs:
+        data = o.data
+        try:
+            bpy.data.objects.remove(o, do_unlink=True)
+        except ReferenceError:
+            continue
+        if data is not None and data.users == 0:
+            coll = (bpy.data.armatures if isinstance(data, bpy.types.Armature)
+                    else bpy.data.meshes if isinstance(data, bpy.types.Mesh)
+                    else None)
+            if coll is not None:
+                try:
+                    coll.remove(data)
+                except Exception:
+                    pass
+    for act in [a for a in bpy.data.actions
+                if a not in acts_before and a.users == 0]:
+        try:
+            bpy.data.actions.remove(act)
+        except Exception:
+            pass
+
+
 # ── UI ───────────────────────────────────────────────────────────────────────
 
 def _poll_source(self, obj):
@@ -638,6 +712,56 @@ class AUTORIG_OT_RetargetAnim(bpy.types.Operator):
             bpy.ops.object.mode_set(mode='POSE')
         self.report({'INFO'} if ok else {'ERROR'}, msg)
         return {'FINISHED'} if ok else {'CANCELLED'}
+
+
+class AUTORIG_OT_RetargetBatch(bpy.types.Operator):
+    """Retarget every FBX/BVH clip in a folder onto the generated rig — one
+    action per clip, named after the file"""
+    bl_idname = "autorig.retarget_batch"
+    bl_label = "Batch Retarget Folder"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    directory: bpy.props.StringProperty(subtype='DIR_PATH')
+    filter_glob: bpy.props.StringProperty(default="*.fbx;*.bvh",
+                                          options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        if LITE_BUILD:
+            self.report({'ERROR'},
+                        "Animation retargeting is a full-edition feature.")
+            return {'CANCELLED'}
+        if find_target_rig(context) is None:
+            self.report({'ERROR'}, "No generated Rigify rig in the scene.")
+            return {'CANCELLED'}
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        rig = find_target_rig(context)
+        if rig is None:
+            self.report({'ERROR'}, "No generated Rigify rig in the scene.")
+            return {'CANCELLED'}
+        props = context.scene.autorig_retarget
+        pairs = ([(it.source, it.target) for it in props.map_items]
+                 if len(props.map_items) else None)
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        results = run_batch_retarget(context, rig, self.directory,
+                                     mapping_pairs=pairs,
+                                     in_place=props.in_place,
+                                     align_rests=props.align_rests)
+        if not results:
+            self.report({'WARNING'}, "No FBX/BVH files found in the folder.")
+            return {'CANCELLED'}
+        n_ok = sum(1 for _, ok, _ in results if ok)
+        for fname, ok, msg in results:
+            if not ok:
+                dbg(f"[retarget-batch] {fname}: {msg}")
+        level = 'INFO' if n_ok == len(results) else 'WARNING'
+        self.report({level},
+                    f"Retargeted {n_ok}/{len(results)} clips "
+                    f"(one action each, named after the files).")
+        return {'FINISHED'} if n_ok else {'CANCELLED'}
 
 
 class AUTORIG_UL_RetargetMap(bpy.types.UIList):
@@ -829,3 +953,4 @@ def draw_retarget_section(layout, context):
 
     col = box.column()
     col.operator("autorig.retarget_anim", icon='PLAY')
+    col.operator("autorig.retarget_batch", icon='FILE_FOLDER')

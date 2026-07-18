@@ -162,6 +162,7 @@ from .retarget      import (AutoRigRetargetMapItem, AutoRigRetargetProps,
                             AUTORIG_OT_RetargetMapClear,
                             AUTORIG_OT_RetargetMapSave,
                             AUTORIG_OT_RetargetMapLoad,
+                            AUTORIG_OT_RetargetBatch,
                             draw_retarget_section)
 from .utils         import get_icon
 # DEV-ONLY data-generation tools: registered only when the dev/ folder exists
@@ -339,6 +340,7 @@ CLASSES = (
     AUTORIG_OT_RetargetMapClear,
     AUTORIG_OT_RetargetMapSave,
     AUTORIG_OT_RetargetMapLoad,
+    AUTORIG_OT_RetargetBatch,
     # Custom rig preserve (PropertyGroup before operators)
     AutoRigPreserveProps,
     AUTORIG_OT_PreserveBackup,

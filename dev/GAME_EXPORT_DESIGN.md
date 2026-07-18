@@ -211,11 +211,28 @@ the head, so the face follows the head rigidly. Two hard-won details:
 - Test lesson: assert per-vertex weight **conservation** (before == after),
   not sum-to-1 — Blender's auto-weight does not normalize every vertex.
 
+### Multi-action + twist-preserve (shipped 2026-07-18)
+
+- **Animation enum** (None / Current Action / All Actions): ALL bakes every
+  action that animates the rig, parks each in its own NLA strip on the clean
+  skeleton, and exports with `bake_anim_use_nla_strips` — one FBX animation
+  stack (clip) per action. Baked outputs are tagged
+  (`action["er_game_bake"]`) so the scan never re-exports its own bakes —
+  name-overlap heuristics CANNOT work here because stripped core names
+  (lip.T.L…) collide with Rigify's control-bone names. Baked actions are
+  also cleaned up with the skeleton (they used to leak).
+- **Preserve Twist Bones** (Unreal): limb `.001` segments survive as UE
+  twist bones (`upperarm_twist_01_l`, `calf_twist_01_l`, …) with the
+  Mannequin chain shape — next segment reparents to the base, twist becomes
+  a leaf child. Weights untouched. Gotcha: the side suffix sits BEFORE the
+  segment suffix (`upper_arm.L.001`), so `_ue_name` must peel `.001` first.
+- Blender 5.x compat: `Bone.select` removed → `pose.select_all` op;
+  `Action.fcurves` removed (slotted actions) → `_act_fcurves` walks
+  layers/strips/channelbags.
+
 ### Remaining refinements
 
-- Twist-bone preservation mode (UE `*_twist_01`) — currently merge-only.
-- Multi-action export (all actions / NLA strips) — currently active action only.
-- In-engine validation of the FBX scale/axis matrices.
+- In-engine validation of the FBX scale/axis matrices (in progress, user).
 
 ## Tier fit (DECIDED 2026-07-18)
 

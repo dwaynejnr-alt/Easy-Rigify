@@ -122,14 +122,32 @@ def _merge_vgroup(mesh, base, seg):
     mesh.vertex_groups.remove(vg_seg)
 
 
-def _merge_segments(context, arm, meshes):
+def _merge_segments(context, arm, meshes, preserve_twist=False):
     """Fold each ".001" twist segment into its base bone (and matching vgroups).
+
+    preserve_twist: keep the limb .001 segments as separate twist bones
+    (renamed to the UE convention later) and restructure the chain the way the
+    UE Mannequin has it — the next limb segment parents to the BASE bone and
+    the twist bone becomes a leaf child of it (upperarm -> {upperarm_twist_01,
+    lowerarm}). Weights are untouched, so deformation quality survives. The
+    neck still merges (the spine-positional naming produces a single neck).
     Returns the number of merges performed."""
     merged = 0
     for base in _SEGMENT_BASES:
         seg = base + ".001"
         has_base = arm.data.bones.get(base) is not None
         has_seg = arm.data.bones.get(seg) is not None
+
+        if has_base and has_seg and preserve_twist and base != "DEF-neck":
+            context.view_layer.objects.active = arm
+            bpy.ops.object.mode_set(mode='EDIT')
+            ebs = arm.data.edit_bones
+            eb_base, eb_seg = ebs[base], ebs[seg]
+            for child in list(eb_seg.children):
+                child.use_connect = False
+                child.parent = eb_base
+            bpy.ops.object.mode_set(mode='OBJECT')
+            continue
 
         if has_base and has_seg:
             # extend base to the segment's tail, reparent the chain, remove seg
@@ -232,6 +250,11 @@ _UE_FINGER = {
     "f_index": "index", "f_middle": "middle", "f_ring": "ring",
     "f_pinky": "pinky", "thumb": "thumb",
 }
+# Rigify .001 twist segment -> UE Mannequin twist bone (preserve-twist mode).
+_UE_TWIST = {
+    "upper_arm": "upperarm_twist", "forearm": "lowerarm_twist",
+    "thigh": "thigh_twist", "shin": "calf_twist",
+}
 def _core_name(bname):
     """Rigify deform-bone name without the DEF- prefix."""
     return bname[len("DEF-"):] if bname.startswith("DEF-") else bname
@@ -266,12 +289,21 @@ def _spine_target_name(i, n, target):
 def _ue_name(core):
     """Rigify core bone name (DEF- already stripped, spine handled elsewhere) ->
     UE5 Mannequin name, or None to leave the core name as-is."""
+    # twist segments carry the side BEFORE the .001 (upper_arm.L.001) — peel
+    # the segment suffix first or side detection never fires
+    twist = core.endswith(".001")
+    if twist:
+        core = core[:-4]
     side = None
     if core.endswith(".L"):
         side, core = "_l", core[:-2]
     elif core.endswith(".R"):
         side, core = "_r", core[:-2]
     if side is None:
+        return None
+    if twist:
+        if core in _UE_TWIST:                     # upper_arm.L.001 -> upperarm_twist_01_l
+            return f"{_UE_TWIST[core]}_01{side}"
         return None
     for fk, fv in _UE_FINGER.items():            # f_index.01 -> index_01_l
         if core.startswith(fk + "."):
@@ -319,6 +351,37 @@ def _rename_for_target(arm, meshes, target):
     return renames
 
 
+def _act_fcurves(act):
+    """Action fcurves across Blender versions: legacy `Action.fcurves` was
+    removed in 5.x (slotted actions) — walk layers/strips/channelbags there."""
+    if hasattr(act, "fcurves"):
+        return act.fcurves
+    for layer in act.layers:
+        for strip in layer.strips:
+            for bag in strip.channelbags:
+                return bag.fcurves
+    return ()
+
+
+def _actions_for_rig(rig):
+    """Every action in the file that animates this rig. Majority match, not
+    any-match: a previously BAKED game action also keys a few names the rig
+    happens to share (root/head/neck), so requiring most of the action's
+    bones to exist on the rig keeps stray bakes and other characters' clips
+    out."""
+    names = set(rig.pose.bones.keys())
+    out = []
+    for act in bpy.data.actions:
+        if act.get("er_game_bake"):
+            continue                       # our own previous export bakes
+        bones_in_act = {fc.data_path.split('"')[1]
+                        for fc in _act_fcurves(act)
+                        if fc.data_path.startswith('pose.bones["')}
+        if bones_in_act and len(bones_in_act & names) > len(bones_in_act) * 0.5:
+            out.append(act)
+    return out
+
+
 def _bake_animation(context, rig, clean, renames):
     """Bake the original rig's active action onto the clean skeleton.
 
@@ -356,8 +419,9 @@ def _bake_animation(context, rig, clean, renames):
     clean.select_set(True)
     context.view_layer.objects.active = clean
     bpy.ops.object.mode_set(mode='POSE')
-    for pb in clean.pose.bones:
-        pb.bone.select = True
+    # select every pose bone via the operator — Bone.select was removed in
+    # Blender 5.0, and the op works on every supported version
+    bpy.ops.pose.select_all(action='SELECT')
     bpy.ops.nla.bake(
         frame_start=f_start, frame_end=f_end,
         only_selected=True, visual_keying=True,
@@ -369,6 +433,10 @@ def _bake_animation(context, rig, clean, renames):
 
     if clean.animation_data and clean.animation_data.action:
         clean.animation_data.action.name = act.name + "_game"
+        # tag the bake so the all-actions scan never re-exports our own
+        # output (on face rigs the stripped core names collide with Rigify's
+        # control-bone names, so name-overlap heuristics can't tell them apart)
+        clean.animation_data.action["er_game_bake"] = True
     n = f_end - f_start + 1
     return n, f"baked {n} frames"
 
@@ -395,7 +463,8 @@ _FBX_SETTINGS = {
 def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
                      apply_modifiers=False, add_leaf_bones=False,
                      include_anim=False, anim_simplify=1.0,
-                     strip_face=False):
+                     strip_face=False, all_actions=False,
+                     preserve_twist=False):
     """Full pipeline: validate -> clean skeleton -> merge -> root -> rename ->
     [bake animation] -> FBX. Returns (ok, message, stats).
 
@@ -454,23 +523,56 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
         n_face = _strip_face_bones(context, clean, dup_meshes, face_set)
 
     # 3. merge twist segments, 4. root, 5. rename to the target convention
-    n_merged = _merge_segments(context, clean, dup_meshes)
+    n_merged = _merge_segments(
+        context, clean, dup_meshes,
+        preserve_twist=(preserve_twist and target == 'UNREAL'))
     _add_root(context, clean)
     renames = _rename_for_target(clean, dup_meshes, target)
 
-    # 5b. bake the active action onto the clean skeleton (optional)
+    # 5b. bake animation onto the clean skeleton (optional): the active action,
+    # or every action that animates the rig (one FBX animation stack each,
+    # via one NLA strip per baked action)
     n_frames = 0
+    n_actions = 0
     anim_note = ""
-    if include_anim:
+    baked = []
+    if include_anim or all_actions:
+        prev_act = rig.animation_data.action if rig.animation_data else None
+        acts = (_actions_for_rig(rig) if all_actions
+                else ([prev_act] if prev_act else []))
+        if not acts:
+            anim_note = "no action on the rig"
         try:
-            n_frames, anim_note = _bake_animation(context, rig, clean, renames)
+            for act in acts:
+                if rig.animation_data is None:
+                    rig.animation_data_create()
+                rig.animation_data.action = act
+                if clean.animation_data:
+                    clean.animation_data.action = None
+                n, note = _bake_animation(context, rig, clean, renames)
+                if n > 0:
+                    n_frames += n
+                    n_actions += 1
+                    baked.append(clean.animation_data.action)
+                elif not anim_note:
+                    anim_note = note
         except Exception as e:
-            _cleanup(clean, dup_meshes)
+            _cleanup(clean, dup_meshes, baked)
             return False, f"Animation bake failed: {e}", {}
+        finally:
+            if rig.animation_data:
+                rig.animation_data.action = prev_act
+        if all_actions and baked:
+            ad = clean.animation_data
+            ad.action = None
+            for a in baked:
+                tr = ad.nla_tracks.new()
+                tr.name = a.name
+                tr.strips.new(a.name, int(a.frame_range[0]), a)
 
     stats = {"bones": len(clean.data.bones), "merged": n_merged,
              "meshes": len(dup_meshes), "frames": n_frames,
-             "face_stripped": n_face}
+             "face_stripped": n_face, "actions": n_actions}
 
     # 6. export selection
     for o in context.selected_objects:
@@ -493,8 +595,10 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
     if n_frames > 0:
         kw.update(
             bake_anim_use_all_bones=True,
-            bake_anim_use_nla_strips=False,
-            bake_anim_use_all_actions=False,   # only the baked action
+            # multi-action mode parks one NLA strip per baked action — the
+            # exporter then writes one animation stack (clip) per strip
+            bake_anim_use_nla_strips=all_actions and len(baked) > 0,
+            bake_anim_use_all_actions=False,
             bake_anim_force_startend_keying=True,
             bake_anim_simplify_factor=anim_simplify,
         )
@@ -502,11 +606,11 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
     try:
         bpy.ops.export_scene.fbx(**kw)
     except Exception as e:
-        _cleanup(clean, dup_meshes)
+        _cleanup(clean, dup_meshes, baked)
         return False, f"FBX export failed: {e}", stats
 
     if not keep_in_scene:
-        _cleanup(clean, dup_meshes)
+        _cleanup(clean, dup_meshes, baked)
 
     # restore user's selection/active
     try:
@@ -523,14 +627,16 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
     dbg(f"[game_export] {target}: {stats['bones']} bones, "
         f"{stats['merged']} merged, {stats['meshes']} mesh(es), "
         f"{stats['frames']} anim frames -> {filepath}")
-    anim_part = (f", {n_frames} anim frames" if n_frames > 0
-                 else f", no animation ({anim_note})" if include_anim else "")
+    anim_part = (f", {n_actions} clip(s)/{n_frames} frames" if n_actions > 1
+                 else f", {n_frames} anim frames" if n_frames > 0
+                 else f", no animation ({anim_note})"
+                 if (include_anim or all_actions) else "")
     face_part = f", {n_face} face bones stripped" if n_face else ""
     return True, (f"Exported {stats['bones']}-bone {target} skeleton "
                   f"({stats['meshes']} mesh{anim_part}{face_part})"), stats
 
 
-def _cleanup(clean, dup_meshes):
+def _cleanup(clean, dup_meshes, baked_actions=()):
     for dm in dup_meshes:
         me = dm.data
         bpy.data.objects.remove(dm, do_unlink=True)
@@ -540,6 +646,13 @@ def _cleanup(clean, dup_meshes):
     bpy.data.objects.remove(clean, do_unlink=True)
     if arm_data.users == 0:
         bpy.data.armatures.remove(arm_data)
+    # baked actions lose their last user with the skeleton — don't leak them
+    for a in baked_actions:
+        try:
+            if a.users == 0:
+                bpy.data.actions.remove(a)
+        except (ReferenceError, RuntimeError):
+            pass
 
 
 class AUTORIG_OT_ExportGame(bpy.types.Operator):
@@ -588,11 +701,24 @@ class AUTORIG_OT_ExportGame(bpy.types.Operator):
                     "don't need bone-driven faces; use blend shapes instead",
         default=False,
     )
-    include_anim: bpy.props.BoolProperty(
-        name="Include Animation",
-        description="Bake the rig's current action onto the game skeleton and "
-                    "export it with the FBX. Exports mesh + skeleton only when "
-                    "the rig has no action",
+    anim_mode: bpy.props.EnumProperty(
+        name="Animation",
+        items=[
+            ('NONE',   "None", "Export the mesh and skeleton only"),
+            ('ACTIVE', "Current Action",
+             "Bake the rig's current action onto the game skeleton"),
+            ('ALL',    "All Actions",
+             "Bake every action in this file that animates the rig — each "
+             "becomes its own animation clip in the FBX"),
+        ],
+        default='NONE',
+    )
+    preserve_twist: bpy.props.BoolProperty(
+        name="Preserve Twist Bones",
+        description="Unreal only: keep the limb twist segments as UE Mannequin "
+                    "twist bones (upperarm_twist_01_l, calf_twist_01_l, ...) "
+                    "instead of merging them — preserves deformation quality "
+                    "at the cost of 8 extra bones",
         default=False,
     )
     anim_simplify: bpy.props.FloatProperty(
@@ -618,8 +744,11 @@ class AUTORIG_OT_ExportGame(bpy.types.Operator):
             context, bpy.path.ensure_ext(self.filepath, ".fbx"),
             target=self.target, apply_modifiers=self.apply_modifiers,
             add_leaf_bones=self.add_leaf_bones,
-            include_anim=self.include_anim, anim_simplify=self.anim_simplify,
-            strip_face=self.strip_face)
+            include_anim=self.anim_mode == 'ACTIVE',
+            all_actions=self.anim_mode == 'ALL',
+            anim_simplify=self.anim_simplify,
+            strip_face=self.strip_face,
+            preserve_twist=self.preserve_twist)
         self.report({'INFO'} if ok else {'ERROR'}, msg)
         return {'FINISHED'} if ok else {'CANCELLED'}
 

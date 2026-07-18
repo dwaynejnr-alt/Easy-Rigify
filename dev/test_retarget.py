@@ -26,6 +26,22 @@ def fail(msg):
 def ok(msg):
     print(f"[OK] {msg}")
 
+def act_fcurves(act):
+    """Action fcurves across versions (legacy .fcurves removed in 5.x)."""
+    if hasattr(act, "fcurves"):
+        return act.fcurves
+    for layer in act.layers:
+        for strip in layer.strips:
+            for bag in strip.channelbags:
+                return bag.fcurves
+    return ()
+
+def find_fc(act, path, idx):
+    for fc in act_fcurves(act):
+        if fc.data_path == path and fc.array_index == idx:
+            return fc
+    return None
+
 # load retarget.py as a package module (`from .constants import dbg`)
 pkg = types.ModuleType("erpkg")
 pkg.__path__ = []
@@ -210,7 +226,7 @@ ok("feet delta-only: sole stays flat at neutral (no toes-up, no shin twist)")
 act_new = rig.animation_data.action
 for bone_chk in ("foot_fk.L", "shin_fk.L", "hand_fk.L"):
     path = f'pose.bones["{bone_chk}"].rotation_quaternion'
-    curves = [act_new.fcurves.find(path, index=i) for i in range(4)]
+    curves = [find_fc(act_new, path, i) for i in range(4)]
     if any(c is None for c in curves):
         fail(f"no quaternion fcurves for {bone_chk}")
     prev_v = None
@@ -412,5 +428,46 @@ if loaded != pairs[:-1]:
     fail("JSON mapping round-trip mismatch")
 ok(f"custom mapping: validation, torso flag, ordering, JSON round-trip "
    f"({len(loaded)} pairs)")
+
+# ── 7. batch retarget: folder of clips -> one named action each ─────────────
+pb_a = src2.pose.bones["upperarm_l"]
+pb_a.rotation_mode = 'XYZ'
+scn.frame_set(1)
+pb_a.rotation_euler = (0, 0, 0)
+pb_a.keyframe_insert("rotation_euler", frame=1)
+scn.frame_set(10)
+pb_a.rotation_euler = (math.radians(40), 0, 0)
+pb_a.keyframe_insert("rotation_euler", frame=10)
+
+batch_dir = tempfile.mkdtemp(prefix="er_batch_")
+bpy.ops.object.select_all(action='DESELECT')
+src2.select_set(True)
+bpy.context.view_layer.objects.active = src2
+for clip in ("clipA", "clipB"):
+    bpy.ops.export_scene.fbx(
+        filepath=os.path.join(batch_dir, clip + ".fbx"),
+        use_selection=True, object_types={'ARMATURE'},
+        bake_anim=True, add_leaf_bones=False)
+src2_act = src2.animation_data.action
+bpy.data.objects.remove(src2, do_unlink=True)
+if src2_act.users == 0:
+    bpy.data.actions.remove(src2_act)
+
+n_arms_before = sum(1 for o in bpy.data.objects if o.type == 'ARMATURE')
+results = rt.run_batch_retarget(bpy.context, rig, batch_dir)
+for fname, okf, msg in results:
+    print(f"  batch {fname}: {'OK' if okf else 'FAIL'} — {msg}")
+if len(results) != 2 or not all(okf for _, okf, _ in results):
+    fail("batch retarget did not succeed on both clips")
+for clip in ("clipA", "clipB"):
+    if clip not in bpy.data.actions:
+        fail(f"batch action '{clip}' missing")
+n_arms_after = sum(1 for o in bpy.data.objects if o.type == 'ARMATURE')
+if n_arms_after != n_arms_before:
+    fail(f"imported clip armatures not cleaned up "
+         f"({n_arms_before} -> {n_arms_after})")
+import shutil
+shutil.rmtree(batch_dir, ignore_errors=True)
+ok("batch retarget: 2/2 clips -> named actions, sources cleaned up")
 
 print("\nALL CHECKS PASSED")

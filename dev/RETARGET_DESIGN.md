@@ -319,7 +319,15 @@ Location-only keys. Verified: pole_vector ON + IK mode reproduces the clip
 with 0.00000 m / 0.000 deg error on the whole leg chain. Note:
 `pole_vector` is a Boolean IDProperty — assign True/False, not 1/0.
 
-Still open from the design: batch retarget (Team tier).
+### Batch retarget (shipped 2026-07-18)
+
+`run_batch_retarget` + "Batch Retarget Folder" button: imports every
+FBX/BVH in a folder, retargets each onto the rig as its own action (named
+after the file), and removes the imported source objects/actions. Honors the
+mapping editor (custom pairs apply to every clip) and the In Place / Match
+Clip Pose toggles. Team-tier gating happens at licensing level, not in code.
+
+Design complete — no open items.
 
 ## Effort estimate
 

@@ -146,6 +146,34 @@ Risks the spike must answer:
 - Performance — pure-Python per-frame matrix math over ~30 controls × ~500
   frames; fine in principle, confirm.
 
+## Spike results (verified headless, Blender 4.5, 2026-07-18)
+
+`dev/spike_retarget.py`: real generated Rigify rig as target; fake Mixamo
+skeleton as source — A-pose rest (target is T-pose), hips at Z=100 (cm scale,
+ratio 0.0108), bone rolls 0.7, rigid arm swing + hips translation over 20
+frames. Retargeted onto `torso` + arm FK chain with the delta math, verified
+via depsgraph world positions. All three spike risks answered:
+
+- **Delta math vs Rigify's stack: EXACT.** `ORG-upper_arm.L` achieved world
+  orientation error 0.0000°; wrist world position error 0.000000 m at both
+  keyed frames. Setting `pose_bone.matrix` (rotation part only, keep the
+  chain's translation) then keying rotation passes through Rigify's FK
+  mechanism losslessly. Note: the limb's IK_FK switch MUST be set to FK
+  (arms/legs default to IK — `upper_arm_parent.L["IK_FK"] = 1.0`).
+- **torso/hips double-transform: NONE.** Keying loc+rot on `torso` alone moved
+  the shoulder by exactly the scaled hips delta (error 1e-6 m).
+- **Performance: fine at spike scale.** One `view_layer.update()` per bone per
+  frame (needed so children see fresh parent transforms). Extrapolates to
+  ~15k updates for 30 controls x 500 frames — likely tens of seconds on a
+  700-bone rig; batch/optimize later if real clips crawl.
+
+Two implementation notes: (1) source hips `location` keys are BONE-LOCAL —
+always read world translation via `matrix_world @ pose.bone.matrix`, never
+trust the fcurve values; magnitude and direction both survived only because
+the spike did. (2) Translation must be delta-from-rest scaled, then added to
+the TARGET's rest position (absolute scaled positions would sink the character
+by the hip-height difference).
+
 ## Effort estimate
 
 - Delta-bake core + Mixamo preset + minimal UI (picker, auto-map, button):

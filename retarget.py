@@ -234,6 +234,7 @@ _HEADING_PRESERVE = ("foot_fk", "toe_fk", "toe")
 _IK_SNAP = (
     ("hand_ik.L", "hand_fk.L"), ("hand_ik.R", "hand_fk.R"),
     ("foot_ik.L", "foot_fk.L"), ("foot_ik.R", "foot_fk.R"),
+    ("toe_ik.L", "toe_fk.L"),   ("toe_ik.R", "toe_fk.R"),
 )
 
 
@@ -428,13 +429,26 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
                     pb.keyframe_insert("location", frame=frame)
                 _key_rotation(pb, frame)
 
-            # snap IK controllers onto the FK result for this frame
+            # snap IK controllers onto the FK result for this frame.
+            # DELTA-based, not a matrix copy: the IK control's REST orientation
+            # can differ from its FK twin's (Rigify orients foot_ik on its own
+            # terms) — copying the FK matrix verbatim then points the
+            # controller the wrong way. Applying the FK bone's
+            # rotation-from-rest to the IK control's own rest is invariant to
+            # either bone's rest convention.
             context.view_layer.update()
             for ik_name, fk_name in _IK_SNAP:
                 if fk_name not in mapped_tgts or ik_name not in rig.pose.bones:
                     continue
                 pb = rig.pose.bones[ik_name]
-                pb.matrix = rig.pose.bones[fk_name].matrix.copy()
+                M_fk = rig.pose.bones[fk_name].matrix
+                rest_fk = rig.data.bones[fk_name].matrix_local
+                rest_ik = rig.data.bones[ik_name].matrix_local
+                D_fk = M_fk.to_3x3() @ rest_fk.to_3x3().inverted()
+                loc = (M_fk.translation
+                       + D_fk @ (rest_ik.translation - rest_fk.translation))
+                pb.matrix = Matrix.LocRotScale(
+                    loc, (D_fk @ rest_ik.to_3x3()).to_quaternion(), None)
                 if pb.rotation_mode == 'QUATERNION':
                     q = pb.rotation_quaternion.copy()
                     pq = prev_q.get(ik_name)

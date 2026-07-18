@@ -41,6 +41,7 @@ Thumbs.db
 !/dev/native/
 !/dev/build_lite.py
 !/dev/GAME_EXPORT_DESIGN.md
+!/dev/RETARGET_DESIGN.md
 !/dev/test_anim_bake.py
 /dev/native/_build/
 /dev/native/_rmodel_backup_v1/

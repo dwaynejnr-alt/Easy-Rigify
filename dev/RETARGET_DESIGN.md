@@ -217,6 +217,33 @@ matches pure-delta semantics. Lesson: the spike proved the MATH exact but the
 SEMANTICS wrong for the main use case — real-clip testing caught what
 synthetic identical-facing tests could not.
 
+### Second field round (2026-07-18): floor sink + turning snap
+
+Match Clip Pose introduced two regressions the user caught on the same clip:
+
+1. **Character sank, feet below the floor.** Root cause (found by dumping the
+   chain's rest-vs-achieved heights): Rigify's `torso` control bone points
+   HORIZONTALLY (+Y) by widget convention — it's an abstract pivot, not
+   anatomy. Rest-aligning it to Mixamo Hips' up-vector pitched it ~90 deg,
+   swinging the pelvis assembly down ~0.24 m around the pivot head while
+   child-bone alignments masked the rotation. Fix: the location-carrying pair
+   NEVER gets rest-aligned (delta-only rotation); only bones lying along an
+   actual body part (spine, limbs, fingers) align. Plus a floor calibration:
+   clip-matching straightens legs the character rigged with a knee bend, so
+   the ankle's clip-matched rest height is compared to the character's rest
+   ankle and every hips key is lifted by the difference (z_off, ~4 mm on the
+   metarig; the torso pivot bug was the 0.24 m).
+2. **Foot/shin snapping while the character turns.** Quaternion double-cover:
+   each frame's quaternion is computed independently; when a turn crosses the
+   sign boundary, adjacent keys interpolate the long way. Fix: per-bone
+   sign-continuity with the previous frame (negate when dot < 0).
+
+Test now covers both: ankle-at-rest-height assertion (err 0.0002 m) and a
+240-deg hips turn with a no-sign-flip sweep over every keyed quaternion.
+Lesson recorded: Rigify CONTROL bones split into anatomical (safe to align)
+and widget-convention pivots (torso/hips/chest point horizontally — align
+only their deltas). Verify chain HEIGHTS, not just directions.
+
 Still open from the design: mapping UIList + JSON save/load, IK foot bake,
 batch retarget (Studio).
 

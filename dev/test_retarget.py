@@ -93,15 +93,23 @@ src = build_armature("mixamo_src", [
 pb_arm = src.pose.bones["mixamorig:LeftArm"]
 pb_hips = src.pose.bones["mixamorig:Hips"]
 pb_arm.rotation_mode = 'XYZ'
+pb_hips.rotation_mode = 'XYZ'
 scn = bpy.context.scene
 scn.frame_set(1)
 pb_arm.keyframe_insert("rotation_euler", frame=1)
 pb_hips.keyframe_insert("location", frame=1)
+pb_hips.keyframe_insert("rotation_euler", frame=1)
 scn.frame_set(20)
 pb_arm.rotation_euler = Euler((math.radians(50), math.radians(20), 0), 'XYZ')
 pb_arm.keyframe_insert("rotation_euler", frame=20)
 pb_hips.location = (30, 0, -5)
 pb_hips.keyframe_insert("location", frame=20)
+pb_hips.keyframe_insert("rotation_euler", frame=20)
+# frames 20-40: the character TURNS 240 deg — this drives quaternions across
+# the double-cover boundary (the foot/shin snap-during-turns bug class)
+scn.frame_set(40)
+pb_hips.rotation_euler = Euler((0, 0, math.radians(240)), 'XYZ')
+pb_hips.keyframe_insert("rotation_euler", frame=40)
 
 # ── mapping (preset path) ───────────────────────────────────────────────────
 mapping = rt.build_mapping(src, rig)
@@ -150,8 +158,8 @@ okflag, msg, stats = rt.run_retarget(bpy.context, src, rig, mapping)
 print(f"  run_retarget -> {okflag}: {msg}")
 if not okflag:
     fail(msg)
-if stats["frames"] != 20:
-    fail(f"expected 20 frames, got {stats['frames']}")
+if stats["frames"] != 40:
+    fail(f"expected 40 frames, got {stats['frames']}")
 if rig.animation_data.action == prev or "user_previous_anim" not in bpy.data.actions:
     fail("previous action lost")
 if stats["fk_switches"] < 4:
@@ -161,6 +169,38 @@ if abs(stats["facing_yaw_deg"]) > 1.0:
 check_matches_clip(Matrix.Identity(3), "align")
 ok("Match Clip Pose: target arm reproduces the clip's limb directions "
    "(A-pose source on T-pose rig)")
+
+# floor calibration: at frame 1 the source is at rest — the character's foot
+# must sit at its OWN rest height (clip-matching straightens bent-knee rests,
+# which used to sink the feet below the floor)
+scn.frame_set(1)
+bpy.context.view_layer.update()
+foot_rest_z = (rig.matrix_world
+               @ rig.data.bones["ORG-foot.L"].matrix_local).translation.z
+foot_now_z = achieved(rig, "ORG-foot.L").translation.z
+err_floor = abs(foot_now_z - foot_rest_z)
+print(f"  floor: rest ankle z={foot_rest_z:.4f}, retargeted z={foot_now_z:.4f}, "
+      f"err={err_floor:.6f} m")
+if err_floor > 5e-3:
+    fail(f"foot sank {err_floor:.4f} m below its rest height")
+ok("floor calibration: foot stays at the character's rest height")
+
+# quaternion continuity: through the 240-deg turn, consecutive keyed
+# quaternions must never flip sign (dot >= 0) or joints spin the long way
+act_new = rig.animation_data.action
+for bone_chk in ("foot_fk.L", "shin_fk.L", "hand_fk.L"):
+    path = f'pose.bones["{bone_chk}"].rotation_quaternion'
+    curves = [act_new.fcurves.find(path, index=i) for i in range(4)]
+    if any(c is None for c in curves):
+        fail(f"no quaternion fcurves for {bone_chk}")
+    prev_v = None
+    for f in range(1, 41):
+        v = Vector([c.evaluate(f) for c in curves])
+        if prev_v is not None and prev_v.dot(v) < 0.0:
+            fail(f"{bone_chk}: quaternion sign flip between frames "
+                 f"{f - 1} and {f}")
+        prev_v = v
+ok("quaternion continuity: no sign flips through the 240-deg turn")
 
 # ── 2. source rotated 180 deg — the hands-behind-the-back bug class ─────────
 src.rotation_euler = Euler((0, 0, math.pi), 'XYZ')

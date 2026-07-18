@@ -273,9 +273,15 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
     # direction equals the (facing-corrected) source bone's rest direction.
     rest_src = {s: _rest_world(src, s).to_3x3() for s, _, _ in mapping}
     rest_tgt = {}
-    for s, t, _ in mapping:
+    for s, t, use_loc in mapping:
         R = _rest_world(rig, t).to_3x3()
-        if align_rests:
+        # The location carrier (torso <- hips) is an abstract PIVOT: Rigify's
+        # torso bone points horizontally by widget convention, not anatomy.
+        # Aligning it to the source hips' up-vector pitches the whole pelvis
+        # assembly ~90 deg around the pivot head and drops the character.
+        # It stays delta-based; only bones that lie along an actual body part
+        # (spine, limbs, fingers) are rest-aligned.
+        if align_rests and not use_loc:
             d_t = _rest_dir(rig, t)
             d_s = _rest_dir(src, s)
             if d_t is not None and d_s is not None:
@@ -284,6 +290,31 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
     rest_tgt_loc = {t: _rest_world(rig, t).translation.copy() for _, t, _ in mapping}
     src_hips_rest = (_rest_world(src, hips_pair[0]).translation.copy()
                      if hips_pair else Vector())
+
+    # Height calibration (align mode): matching the clip's leg rest directions
+    # straightens legs the character had rigged with a knee bend, so the feet
+    # would reach BELOW the floor while the hips stay at the character's rest
+    # height. Measure, per mapped leg, where the ankle would land under
+    # clip-matched rest directions vs where the character's rest ankle is, and
+    # lift every hips key by the difference.
+    z_off = 0.0
+    if align_rests:
+        src_of = {t: s for s, t, _ in mapping}
+        offs = []
+        for side in (".L", ".R"):
+            thigh, shin, foot = ("thigh_fk" + side, "shin_fk" + side,
+                                 "foot_fk" + side)
+            if not all(b in src_of for b in (thigh, shin, foot)):
+                continue
+            p = _rest_world(rig, thigh).translation.copy()
+            dirs = [_rest_dir(src, src_of[b]) for b in (thigh, shin)]
+            if any(d is None for d in dirs):
+                continue
+            for b, d_s in zip((thigh, shin), dirs):
+                p += (C @ d_s) * rig.data.bones[b].length
+            offs.append(_rest_world(rig, foot).translation.z - p.z)
+        if offs:
+            z_off = sum(offs) / len(offs)
 
     # fresh action on the rig; keep whatever it had as a datablock
     if rig.animation_data is None:
@@ -318,6 +349,7 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
     wm = context.window_manager
     wm.progress_begin(f_start, f_end)
     inv_rig = rig.matrix_world.inverted()
+    prev_q = {}
     try:
         for frame in range(f_start, f_end + 1):
             context.scene.frame_set(frame)
@@ -339,11 +371,25 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
                     if in_place:
                         t_delta.x = t_delta.y = 0.0
                     loc = rest_tgt_loc[t_name] + t_delta
+                    loc.z += z_off
                 else:
                     # keep the chain-determined position; key rotation only
                     loc = _pose_world(rig, t_name).translation
                 pb.matrix = inv_rig @ Matrix.LocRotScale(
                     loc, R_tgt.to_quaternion(), None)
+                # quaternion sign continuity: each frame's quaternion is
+                # computed independently, and q / -q are the same rotation but
+                # interpolate differently — a sign flip between adjacent keys
+                # makes joints visibly spin "the long way" (feet/shins snap
+                # while the character turns). Keep each bone on the same cover
+                # as its previous frame.
+                if pb.rotation_mode == 'QUATERNION':
+                    q = pb.rotation_quaternion.copy()
+                    pq = prev_q.get(t_name)
+                    if pq is not None and pq.dot(q) < 0.0:
+                        q.negate()
+                        pb.rotation_quaternion = q
+                    prev_q[t_name] = q
                 if use_loc:
                     pb.keyframe_insert("location", frame=frame)
                 _key_rotation(pb, frame)
@@ -357,7 +403,8 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
                  math.atan2(C[1][0], C[0][0])), 1)}
     dbg(f"[retarget] {src.name} -> {rig.name}: {stats['bones']} controls, "
         f"{stats['frames']} frames, facing {stats['facing_yaw_deg']} deg, "
-        f"align={align_rests} -> action '{new_act.name}'")
+        f"align={align_rests}, floor z_off={z_off:.4f} "
+        f"-> action '{new_act.name}'")
     return True, (f"Retargeted {stats['frames']} frames onto "
                   f"{stats['bones']} controls -> action '{new_act.name}'"), stats
 

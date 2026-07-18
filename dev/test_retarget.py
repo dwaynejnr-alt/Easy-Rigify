@@ -235,7 +235,8 @@ ok("quaternion continuity: no sign flips through the 240-deg turn")
 # deform chain STILL follows the clip.
 scn.frame_set(30)
 bpy.context.view_layer.update()
-for ik_b, fk_b in (("foot_ik.L", "foot_fk.L"), ("hand_ik.L", "hand_fk.L")):
+for ik_b, fk_b in (("foot_ik.L", "foot_fk.L"), ("hand_ik.L", "hand_fk.L"),
+                   ("thigh_ik.L", "thigh_fk.L")):
     # the IK control's rotation-FROM-ITS-REST must equal the FK bone's
     # (rest conventions can differ — foot_ik may not be a twin of foot_fk)
     M_ik = achieved(rig, ik_b)
@@ -249,22 +250,28 @@ for ik_b, fk_b in (("foot_ik.L", "foot_fk.L"), ("hand_ik.L", "hand_fk.L")):
     ang = min(ang, 360 - ang)
     err_t = (M_ik.translation - M_fk.translation).length
     print(f"  {ik_b}: pos err {err_t:.6f} m, delta-rot err {ang:.3f} deg")
-    if err_t > 2e-3 or ang > 0.5:
+    # thigh_ik carries Rigify's own IK constraint stack, so its EVALUATED
+    # rotation includes the solver's aim — a few degrees off the keyed basis
+    # is expected; the strict correctness gate is the whole-leg-in-IK check
+    tol = 5.0 if ik_b.startswith("thigh_ik") else 0.5
+    if err_t > 2e-3 or ang > tol:
         fail(f"{ik_b} not tracking {fk_b}'s delta")
-M_before = achieved(rig, "ORG-foot.L").copy()
+M_before = {b: achieved(rig, b).copy()
+            for b in ("ORG-foot.L", "ORG-shin.L", "ORG-thigh.L")}
 rig.pose.bones["thigh_parent.L"]["IK_FK"] = 0.0   # force the leg to IK
 bpy.context.view_layer.update()
-M_after = achieved(rig, "ORG-foot.L")
-err_sw = (M_after.translation - M_before.translation).length
-ang_sw = math.degrees(M_after.to_quaternion().rotation_difference(
-    M_before.to_quaternion()).angle)
-ang_sw = min(ang_sw, 360 - ang_sw)
-print(f"  leg switched to IK: ORG-foot moved {err_sw:.6f} m, "
-      f"rotated {ang_sw:.3f} deg")
-if err_sw > 5e-3 or ang_sw > 1.0:
-    fail(f"leg in IK mode diverges (pos {err_sw:.4f} m, rot {ang_sw:.2f} deg)")
+for b, Mb in M_before.items():
+    Ma = achieved(rig, b)
+    err_sw = (Ma.translation - Mb.translation).length
+    ang_sw = math.degrees(Ma.to_quaternion().rotation_difference(
+        Mb.to_quaternion()).angle)
+    ang_sw = min(ang_sw, 360 - ang_sw)
+    print(f"  leg in IK: {b} moved {err_sw:.6f} m, rotated {ang_sw:.3f} deg")
+    if err_sw > 5e-3 or ang_sw > 1.0:
+        fail(f"{b} in IK mode diverges (pos {err_sw:.4f} m, "
+             f"rot {ang_sw:.2f} deg)")
 rig.pose.bones["thigh_parent.L"]["IK_FK"] = 1.0
-ok("IK controllers baked (delta-correct): limb identical in FK and IK mode")
+ok("IK controllers baked (delta-correct): whole leg identical in FK and IK")
 
 # ── 2. source rotated 180 deg — the hands-behind-the-back bug class ─────────
 src.rotation_euler = Euler((0, 0, math.pi), 'XYZ')

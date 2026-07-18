@@ -232,6 +232,10 @@ _HEADING_PRESERVE = ("foot_fk", "toe_fk", "toe")
 # IK controls alongside makes the clip correct in EITHER mode and lets users
 # flip a limb to IK afterward for foot polish with no snapping step.
 _IK_SNAP = (
+    # upper-segment IK controls first: in IK mode they ARE the upper limb
+    # (their rotation aims the knee/elbow swivel)
+    ("thigh_ik.L", "thigh_fk.L"),         ("thigh_ik.R", "thigh_fk.R"),
+    ("upper_arm_ik.L", "upper_arm_fk.L"), ("upper_arm_ik.R", "upper_arm_fk.R"),
     ("hand_ik.L", "hand_fk.L"), ("hand_ik.R", "hand_fk.R"),
     ("foot_ik.L", "foot_fk.L"), ("foot_ik.R", "foot_fk.R"),
     ("toe_ik.L", "toe_fk.L"),   ("toe_ik.R", "toe_fk.R"),

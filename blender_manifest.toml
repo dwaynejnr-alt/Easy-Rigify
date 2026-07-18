@@ -69,6 +69,8 @@ paths_exclude_pattern = [
   # Stale full-addon copy + old build zips — must never ship (it also still
   # contains the OLD model-crypto key/algorithm).
   "/Backup/",
+  # Documentation website (GitHub Pages) — online only, not shipped.
+  "/docs/",
   # Root-level dataset/debug dirs (17k+ face-capture images, ~2GB) — training
   # data, not shipped. Caught late: the first extension build was 2GB because
   # this lives at repo root, not under dev/, so the /dev/ exclude missed it.

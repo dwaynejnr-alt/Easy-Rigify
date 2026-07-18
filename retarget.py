@@ -207,6 +207,25 @@ def _facing_yaw(obj, left_name, right_name):
     return math.atan2(f.y, f.x)
 
 
+def _match_heading(d_t, d_s):
+    """Rotate d_s about world Z so its horizontal heading equals d_t's.
+
+    Used for feet/toes: their pitch must match the clip (floor contact), but
+    the HEADING must stay the character's own. Forcing the clip's foot yaw
+    crams any rest heading difference (toe-out stance, etc.) into the ankle,
+    and Rigify's shin twist bones render that as the whole shin twisting."""
+    ht = Vector((d_t.x, d_t.y, 0.0))
+    hs = Vector((d_s.x, d_s.y, 0.0))
+    if ht.length < 1e-4 or hs.length < 1e-4:
+        return d_s
+    yaw = math.atan2(ht.y, ht.x) - math.atan2(hs.y, hs.x)
+    return Matrix.Rotation(yaw, 3, 'Z') @ d_s
+
+
+# Targets whose rest-align keeps the character's heading (see _match_heading).
+_HEADING_PRESERVE = ("foot_fk", "toe_fk", "toe")
+
+
 def _facing_correction(src, rig, mapping):
     """Yaw rotation carrying the source character's facing onto the target's.
 
@@ -285,7 +304,10 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
             d_t = _rest_dir(rig, t)
             d_s = _rest_dir(src, s)
             if d_t is not None and d_s is not None:
-                R = d_t.rotation_difference(C @ d_s).to_matrix() @ R
+                d = C @ d_s
+                if t.startswith(_HEADING_PRESERVE):
+                    d = _match_heading(d_t, d)
+                R = d_t.rotation_difference(d).to_matrix() @ R
         rest_tgt[t] = R
     rest_tgt_loc = {t: _rest_world(rig, t).translation.copy() for _, t, _ in mapping}
     src_hips_rest = (_rest_world(src, hips_pair[0]).translation.copy()

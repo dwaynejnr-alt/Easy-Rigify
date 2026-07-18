@@ -244,6 +244,28 @@ Lesson recorded: Rigify CONTROL bones split into anatomical (safe to align)
 and widget-convention pivots (torso/hips/chest point horizontally — align
 only their deltas). Verify chain HEIGHTS, not just directions.
 
+### Third field round (2026-07-18): shin twist on both legs
+
+After the floor fix, BOTH shins showed visible twist (previously only the
+right). Mechanism: Rigify's shin twist bones derive their roll from the FOOT
+orientation, and Match Clip Pose was forcing each foot to the clip skeleton's
+absolute world orientation INCLUDING ITS HEADING (yaw). Any rest heading
+difference between the clip's feet and the character's (toe-out stance etc.)
+gets crammed into the ankle and renders as the whole shin twisting — on both
+legs, once both feet were clip-aligned.
+
+Fix: feet/toes (`_HEADING_PRESERVE`) rest-align PITCH ONLY — the source rest
+direction is first yawed about world Z so its horizontal heading matches the
+character's own (`_match_heading`) before the alignment rotation is computed.
+Floor contact needs the clip's pitch; heading belongs to the character. Test:
+source feet splayed 35 deg outward -> retargeted foot keeps the character's
+0-deg heading with the clip's pitch (errors 0.0 deg / 0.0000).
+
+Watch item: hands drive forearm twist the same way in Rigify. Hand alignment
+stays absolute (hand orientation usually matters more than wrist twist), but
+if users report forearm twist, the same heading/twist-limiting treatment is
+the candidate.
+
 Still open from the design: mapping UIList + JSON save/load, IK foot bake,
 batch retarget (Studio).
 

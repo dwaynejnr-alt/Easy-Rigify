@@ -87,7 +87,10 @@ src = build_armature("mixamo_src", [
     ("mixamorig:RightArm",     (-8, 0, 142), (-8 - 30 * D, 0, 142 - 30 * D), "mixamorig:RightShoulder"),
     ("mixamorig:LeftUpLeg",    (9, 0, 100),  (9, 0, 55),   "mixamorig:Hips"),
     ("mixamorig:LeftLeg",      (9, 0, 55),   (9, 0, 10),   "mixamorig:LeftUpLeg"),
-    ("mixamorig:LeftFoot",     (9, 0, 10),   (9, -12, 2),  "mixamorig:LeftLeg"),
+    # foot heading ~35 deg OUTWARD — differs from the character's straight
+    # feet; the retarget must keep the character's heading (only pitch is
+    # taken from the clip) or the shin twist bones wind up
+    ("mixamorig:LeftFoot",     (9, 0, 10),   (16, -10, 2), "mixamorig:LeftLeg"),
 ])
 
 pb_arm = src.pose.bones["mixamorig:LeftArm"]
@@ -184,6 +187,30 @@ print(f"  floor: rest ankle z={foot_rest_z:.4f}, retargeted z={foot_now_z:.4f}, 
 if err_floor > 5e-3:
     fail(f"foot sank {err_floor:.4f} m below its rest height")
 ok("floor calibration: foot stays at the character's rest height")
+
+# foot heading: the source feet point ~35 deg outward, the character's point
+# straight — the retargeted foot must keep the CHARACTER's heading (yaw) and
+# take only the PITCH from the clip
+def yaw_deg(v):
+    return math.degrees(math.atan2(v.x, -v.y))
+
+d_char_rest = ((rig.matrix_world @ rig.data.bones["ORG-foot.L"].matrix_local)
+               .to_3x3() @ Vector((0, 1, 0))).normalized()
+d_src_rest = ((src.matrix_world.to_3x3()
+               @ (src.data.bones["mixamorig:LeftFoot"].tail_local
+                  - src.data.bones["mixamorig:LeftFoot"].head_local))).normalized()
+d_now = bone_dir(achieved(rig, "ORG-foot.L"))
+yaw_err = abs(yaw_deg(d_now) - yaw_deg(d_char_rest))
+pitch_err = abs(d_now.z - d_src_rest.z)
+print(f"  foot heading: char rest {yaw_deg(d_char_rest):.1f} deg, source "
+      f"{yaw_deg(d_src_rest):.1f} deg, retargeted {yaw_deg(d_now):.1f} deg; "
+      f"pitch err {pitch_err:.4f}")
+if yaw_err > 2.0:
+    fail(f"foot heading drifted {yaw_err:.1f} deg from the character's rest")
+if pitch_err > 0.03:
+    fail(f"foot pitch off by {pitch_err:.3f} from the clip")
+ok("foot keeps the character's heading, takes the clip's pitch "
+   "(no shin twist wind-up)")
 
 # quaternion continuity: through the 240-deg turn, consecutive keyed
 # quaternions must never flip sign (dot >= 0) or joints spin the long way

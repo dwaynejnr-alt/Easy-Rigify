@@ -80,9 +80,12 @@ def _strip_prefix(name):
 # wrong more often than it helps.
 _FUZZY_RULES = [
     # (synonyms, target base, sided, use_location)
-    (("hips", "pelvis"),                    ("torso",),                False, True),
+    (("hips", "pelvis", "hip"),             ("torso",),                False, True),
     (("neck",),                             ("neck",),                 False, False),
     (("head",),                             ("head",),                 False, False),
+    (("chest",),                            ("spine_fk.003",),         False, False),
+    (("spine", "waist"),                    ("spine_fk.001", "spine_fk.002",
+                                             "spine_fk.003"),          False, False),
     (("shoulder", "clavicle", "collar"),    ("shoulder",),             True,  False),
     (("forearm", "lowerarm", "elbow"),      ("forearm_fk",),           True,  False),
     (("upperarm", "uparm", "arm"),          ("upper_arm_fk",),         True,  False),
@@ -100,18 +103,30 @@ def _norm(name):
 
 
 def _side_of(name):
-    """'.L' / '.R' / None from common side conventions."""
+    """'.L' / '.R' / None from common side conventions.
+
+    Handles prefix (LeftArm), suffix (thigh_l, shin.L), and INFIX side tokens
+    (Character Creator's CC_Base_L_Thigh) by checking each separator-delimited
+    token, plus embedded Left/Right words anywhere in the name."""
     n = _strip_prefix(name).lower()
-    if n.startswith("left") or n.endswith((".l", "_l", "-l")) or n.endswith("left"):
+    if "left" in n:
         return ".L"
-    if n.startswith("right") or n.endswith((".r", "_r", "-r")) or n.endswith("right"):
+    if "right" in n:
         return ".R"
+    for tok in n.replace(".", "_").replace("-", "_").replace(" ", "_").split("_"):
+        if tok == "l":
+            return ".L"
+        if tok == "r":
+            return ".R"
     return None
 
 
-def _first_existing(rig, candidates):
+def _first_existing(rig, candidates, used=()):
+    """First candidate that exists on the rig and isn't taken yet. Letting
+    taken candidates fall through makes numbered chains map naturally: the
+    second source 'spine' bone lands on spine_fk.002 because .001 is used."""
     for c in candidates:
-        if c in rig.pose.bones:
+        if c in rig.pose.bones and c not in used:
             return c
     return None
 
@@ -128,8 +143,8 @@ def build_mapping(src, rig):
         tgts = _MIXAMO.get(core)
         if not tgts:
             continue
-        tgt = _first_existing(rig, tgts)
-        if tgt and tgt not in used_tgt:
+        tgt = _first_existing(rig, tgts, used_tgt)
+        if tgt:
             mapping.append((b.name, tgt, core in _HIPS_SOURCES))
             used_tgt.add(tgt)
 
@@ -146,8 +161,8 @@ def build_mapping(src, rig):
                 if sided and side is None:
                     break
                 cands = tuple(t + side for t in tgt_bases) if sided else tgt_bases
-                tgt = _first_existing(rig, cands)
-                if tgt and tgt not in used_tgt:
+                tgt = _first_existing(rig, cands, used_tgt)
+                if tgt:
                     mapping.append((b.name, tgt, use_loc))
                     used_tgt.add(tgt)
                 break                          # first matching rule only

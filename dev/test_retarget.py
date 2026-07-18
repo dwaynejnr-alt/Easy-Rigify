@@ -328,4 +328,35 @@ for need in ("torso", "shoulder.L", "upper_arm_fk.L", "forearm_fk.L",
         fail(f"fuzzy mapping missed {need}")
 ok(f"fuzzy mapping resolved UE-style names: {len(m2)} pairs incl. both sides")
 
+# ── 5. fuzzy path: Character Creator names (INFIX side tokens: CC_Base_L_*) ──
+src3 = build_armature("cc_src", [
+    ("CC_Base_Hip",        (0, 0, 0.9),    (0, 0, 1.0),    None),
+    ("CC_Base_Waist",      (0, 0, 1.0),    (0, 0, 1.1),    "CC_Base_Hip"),
+    ("CC_Base_Spine01",    (0, 0, 1.1),    (0, 0, 1.25),   "CC_Base_Waist"),
+    ("CC_Base_Spine02",    (0, 0, 1.25),   (0, 0, 1.4),    "CC_Base_Spine01"),
+    ("CC_Base_NeckTwist01", (0, 0, 1.4),   (0, 0, 1.5),    "CC_Base_Spine02"),
+    ("CC_Base_Head",       (0, 0, 1.5),    (0, 0, 1.6),    "CC_Base_NeckTwist01"),
+    ("CC_Base_L_Clavicle", (0.02, 0, 1.4), (0.08, 0, 1.4), "CC_Base_Spine02"),
+    ("CC_Base_L_Upperarm", (0.08, 0, 1.4), (0.3, 0, 1.4),  "CC_Base_L_Clavicle"),
+    ("CC_Base_L_Forearm",  (0.3, 0, 1.4),  (0.5, 0, 1.4),  "CC_Base_L_Upperarm"),
+    ("CC_Base_L_Hand",     (0.5, 0, 1.4),  (0.6, 0, 1.4),  "CC_Base_L_Forearm"),
+    ("CC_Base_L_Thigh",    (0.09, 0, 0.9), (0.09, 0, 0.5), "CC_Base_Hip"),
+    ("CC_Base_L_Calf",     (0.09, 0, 0.5), (0.09, 0, 0.1), "CC_Base_L_Thigh"),
+    ("CC_Base_L_Foot",     (0.09, 0, 0.1), (0.09, -0.1, 0), "CC_Base_L_Calf"),
+    ("CC_Base_R_Thigh",    (-0.09, 0, 0.9), (-0.09, 0, 0.5), "CC_Base_Hip"),
+    ("CC_Base_R_Calf",     (-0.09, 0, 0.5), (-0.09, 0, 0.1), "CC_Base_R_Thigh"),
+    ("CC_Base_R_Foot",     (-0.09, 0, 0.1), (-0.09, -0.1, 0), "CC_Base_R_Calf"),
+])
+m3 = rt.build_mapping(src3, rig)
+tgts3 = {t for _, t, _ in m3}
+print(f"  CC mapping: {len(m3)} pairs -> {sorted(tgts3)}")
+for need in ("torso", "shoulder.L", "upper_arm_fk.L", "forearm_fk.L",
+             "hand_fk.L", "thigh_fk.L", "shin_fk.L", "foot_fk.L",
+             "thigh_fk.R", "shin_fk.R", "foot_fk.R", "neck", "head",
+             "spine_fk.001", "spine_fk.002"):
+    if need not in tgts3:
+        fail(f"CC mapping missed {need}")
+ok(f"fuzzy mapping resolved Character Creator names (infix _L_/_R_): "
+   f"{len(m3)} pairs, arms AND legs both sides")
+
 print("\nALL CHECKS PASSED")

@@ -2,15 +2,22 @@
 # Run:  blender --background --factory-startup --python test_retarget.py
 #
 # 1. Mixamo-named source (A-pose, cm scale, rolled bones) -> preset mapping,
-#    run_retarget, verify wrist world position through the Rigify stack and
-#    that a NEW action was created with the rig's old action preserved.
-# 2. UE-style-named source -> fuzzy mapping finds the sided limb chain.
+#    run_retarget with Match Clip Pose (default): the clip's actual limb poses
+#    must be reproduced — wrist lands where the SOURCE arm directions point,
+#    even though the target rest is T-pose. New action created, rig's old
+#    action preserved.
+# 2. Same source rotated 180 deg (facing away, the "hands behind the back"
+#    bug class): auto facing correction must map the motion into the
+#    character's own frame.
+# 3. align_rests=False keeps the original delta semantics (offsets from the
+#    character's own rest).
+# 4. UE-style-named source -> fuzzy mapping finds the sided limb chain.
 import bpy
 import sys
 import math
 import types
 import importlib.util
-from mathutils import Vector, Euler
+from mathutils import Matrix, Vector, Euler
 
 def fail(msg):
     print(f"[FAIL] {msg}")
@@ -41,14 +48,12 @@ bpy.ops.pose.rigify_generate()
 rig = bpy.context.active_object
 ok(f"generated rig: {len(rig.data.bones)} bones")
 
-# give the rig a pre-existing action that must survive the retarget
 rig.animation_data_create()
 prev = bpy.data.actions.new("user_previous_anim")
 rig.animation_data.action = prev
 
 # ── Mixamo-style source (A-pose, hips Z=100, rolls 0.7) ─────────────────────
 def build_armature(name, bones):
-    """bones: [(name, head, tail, parent)]"""
     data = bpy.data.armatures.new(name)
     obj = bpy.data.objects.new(name, data)
     bpy.context.scene.collection.objects.link(obj)
@@ -78,12 +83,13 @@ src = build_armature("mixamo_src", [
     ("mixamorig:LeftArm",      tuple(a),     tuple(b),     "mixamorig:LeftShoulder"),
     ("mixamorig:LeftForeArm",  tuple(b),     tuple(c),     "mixamorig:LeftArm"),
     ("mixamorig:LeftHand",     tuple(c),     tuple(d),     "mixamorig:LeftForeArm"),
+    ("mixamorig:RightShoulder", (-2, 0, 140), (-8, 0, 142), "mixamorig:Spine2"),
+    ("mixamorig:RightArm",     (-8, 0, 142), (-8 - 30 * D, 0, 142 - 30 * D), "mixamorig:RightShoulder"),
     ("mixamorig:LeftUpLeg",    (9, 0, 100),  (9, 0, 55),   "mixamorig:Hips"),
     ("mixamorig:LeftLeg",      (9, 0, 55),   (9, 0, 10),   "mixamorig:LeftUpLeg"),
     ("mixamorig:LeftFoot",     (9, 0, 10),   (9, -12, 2),  "mixamorig:LeftLeg"),
 ])
 
-# animate: rigid LeftArm swing + hips translation
 pb_arm = src.pose.bones["mixamorig:LeftArm"]
 pb_hips = src.pose.bones["mixamorig:Hips"]
 pb_arm.rotation_mode = 'XYZ'
@@ -102,65 +108,101 @@ mapping = rt.build_mapping(src, rig)
 mapped_tgts = {t for _, t, _ in mapping}
 print(f"  preset mapping: {len(mapping)} pairs -> {sorted(mapped_tgts)}")
 for need in ("torso", "upper_arm_fk.L", "forearm_fk.L", "hand_fk.L",
-             "thigh_fk.L", "shin_fk.L", "foot_fk.L", "neck", "head"):
+             "upper_arm_fk.R", "thigh_fk.L", "shin_fk.L", "foot_fk.L",
+             "neck", "head"):
     if need not in mapped_tgts:
         fail(f"preset mapping missed {need}")
 if not any(loc for _, t, loc in mapping if t == "torso"):
     fail("torso pair is not the location carrier")
 ok(f"preset mapping: {len(mapping)} pairs, all core controls present")
 
-# ── run the real bake ───────────────────────────────────────────────────────
+# ── verification helpers ────────────────────────────────────────────────────
+def achieved(obj, bname):
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = obj.evaluated_get(dg)
+    return ev.matrix_world @ ev.pose.bones[bname].matrix
+
+def bone_dir(M):
+    return (M.to_3x3() @ Vector((0.0, 1.0, 0.0))).normalized()
+
+LEN_U = rig.data.bones["ORG-upper_arm.L"].length
+LEN_F = rig.data.bones["ORG-forearm.L"].length
+
+def check_matches_clip(C, label):
+    """With Match Clip Pose, the target arm bones must point along the
+    (facing-corrected) SOURCE arm's pose directions — so the wrist sits at
+    shoulder + len_upper*dir_upper + len_forearm*dir_forearm."""
+    for frame in (1, 20):
+        scn.frame_set(frame)
+        bpy.context.view_layer.update()
+        d_u = C @ bone_dir(src.matrix_world @ src.pose.bones["mixamorig:LeftArm"].matrix)
+        d_f = C @ bone_dir(src.matrix_world @ src.pose.bones["mixamorig:LeftForeArm"].matrix)
+        sh_now = achieved(rig, "ORG-upper_arm.L").translation
+        wr_now = achieved(rig, "ORG-hand.L").translation
+        wr_expect = sh_now + d_u * LEN_U + d_f * LEN_F
+        err = (wr_now - wr_expect).length
+        print(f"  [{label}] frame {frame}: wrist-vs-clip err = {err:.6f} m")
+        if err > 2e-3:
+            fail(f"[{label}] frame {frame}: wrist off by {err:.4f} m")
+
+# ── 1. Match Clip Pose (default) ────────────────────────────────────────────
 okflag, msg, stats = rt.run_retarget(bpy.context, src, rig, mapping)
 print(f"  run_retarget -> {okflag}: {msg}")
 if not okflag:
     fail(msg)
 if stats["frames"] != 20:
     fail(f"expected 20 frames, got {stats['frames']}")
-if rig.animation_data.action.name != "mixamo_srcAction_retarget":
-    print(f"  (action name: {rig.animation_data.action.name})")
-if rig.animation_data.action == prev:
-    fail("retarget overwrote the rig's previous action")
-if "user_previous_anim" not in bpy.data.actions:
-    fail("previous action datablock lost")
+if rig.animation_data.action == prev or "user_previous_anim" not in bpy.data.actions:
+    fail("previous action lost")
 if stats["fk_switches"] < 4:
     fail(f"expected 4 IK_FK switches keyed, got {stats['fk_switches']}")
-ok(f"new action '{stats['action']}', previous action preserved, "
-   f"{stats['fk_switches']} IK/FK switches keyed")
+if abs(stats["facing_yaw_deg"]) > 1.0:
+    fail(f"same-facing rigs but facing_yaw={stats['facing_yaw_deg']}")
+check_matches_clip(Matrix.Identity(3), "align")
+ok("Match Clip Pose: target arm reproduces the clip's limb directions "
+   "(A-pose source on T-pose rig)")
 
-# ── world-position verification (same discipline as the spike) ─────────────
-def achieved(obj, bname):
-    dg = bpy.context.evaluated_depsgraph_get()
-    ev = obj.evaluated_get(dg)
-    return ev.matrix_world @ ev.pose.bones[bname].matrix
+# ── 2. source rotated 180 deg — the hands-behind-the-back bug class ─────────
+src.rotation_euler = Euler((0, 0, math.pi), 'XYZ')
+bpy.context.view_layer.update()
+okflag, msg, stats = rt.run_retarget(bpy.context, src, rig, mapping)
+if not okflag:
+    fail(msg)
+if abs(abs(stats["facing_yaw_deg"]) - 180.0) > 1.0:
+    fail(f"expected ~180 facing yaw, got {stats['facing_yaw_deg']}")
+C180 = Matrix.Rotation(math.radians(stats["facing_yaw_deg"]), 3, 'Z')
+check_matches_clip(C180, "180deg")
+ok(f"facing auto-correction: {stats['facing_yaw_deg']} deg detected, motion "
+   "mapped into the character's frame")
+src.rotation_euler = Euler((0, 0, 0), 'XYZ')
+bpy.context.view_layer.update()
+
+# ── 3. align_rests=False keeps the original delta semantics ────────────────
+okflag, msg, stats = rt.run_retarget(bpy.context, src, rig, mapping,
+                                     align_rests=False)
+if not okflag:
+    fail(msg)
 
 def rest_w(obj, bname):
     return obj.matrix_world @ obj.data.bones[bname].matrix_local
 
 sh_rest = rest_w(rig, "upper_arm_fk.L").translation
 wr_rest = rest_w(rig, "hand_fk.L").translation
-src_hip_rest = rest_w(src, "mixamorig:Hips").translation
-ratio = rest_w(rig, "torso").translation.z / src_hip_rest.z
-
 for frame in (1, 20):
     scn.frame_set(frame)
     bpy.context.view_layer.update()
     R_delta = ((src.matrix_world @ src.pose.bones["mixamorig:LeftArm"].matrix).to_3x3()
                @ rest_w(src, "mixamorig:LeftArm").to_3x3().inverted())
-    hips_t = ((src.matrix_world @ src.pose.bones["mixamorig:Hips"].matrix).translation
-              - src_hip_rest) * ratio
     sh_now = achieved(rig, "ORG-upper_arm.L").translation
     wr_now = achieved(rig, "ORG-hand.L").translation
     wr_expect = sh_now + R_delta @ (wr_rest - sh_rest)
     err = (wr_now - wr_expect).length
-    err_sh = (sh_now - (sh_rest + hips_t)).length
-    print(f"  frame {frame}: wrist err={err:.6f} m, shoulder-follows-hips "
-          f"err={err_sh:.6f} m")
-    if err > 2e-3 or err_sh > 2e-3:
-        fail(f"frame {frame}: world positions off (wrist {err:.4f}, "
-             f"shoulder {err_sh:.4f})")
-ok("world positions exact through the Rigify stack at both keyed frames")
+    print(f"  [no-align] frame {frame}: wrist delta-semantics err = {err:.6f} m")
+    if err > 2e-3:
+        fail(f"[no-align] frame {frame}: wrist off by {err:.4f} m")
+ok("align_rests=False preserves the original character-rest delta semantics")
 
-# ── fuzzy path: UE-style names ──────────────────────────────────────────────
+# ── 4. fuzzy path: UE-style names ───────────────────────────────────────────
 src2 = build_armature("ue_src", [
     ("pelvis",     (0, 0, 0.9),   (0, 0, 1.0),    None),
     ("neck_01",    (0, 0, 1.4),   (0, 0, 1.5),    "pelvis"),

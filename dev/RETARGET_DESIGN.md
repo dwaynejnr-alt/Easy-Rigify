@@ -192,8 +192,33 @@ through the full Rigify stack, previous rig action preserved, 4 IK/FK
 switches keyed; fuzzy path resolves a UE-named skeleton (10 pairs, both
 sides). Addon register/unregister/re-register smoke-tested.
 
-Still open from the design: mapping UIList + JSON save/load, rest-align
-option, IK foot bake, batch retarget (Studio).
+### Real-clip field fix (2026-07-18): Match Clip Pose + facing correction
+
+First real Mixamo clip test put the hands BEHIND the character. Two causes,
+both fixed:
+
+1. **Rest-pose offset baked into deltas.** Pure delta semantics preserve
+   offsets from the TARGET's rest — a T-pose clip on a character rigged in a
+   different rest over-rotates every limb by the rest difference. Fix =
+   the designed "rest align", now shipped as **Match Clip Pose (default ON)**:
+   each control's rest base is pre-rotated so its bone direction equals the
+   clip skeleton's rest direction (`d_tgt.rotation_difference(C @ d_src)`),
+   so the clip's ACTUAL limb poses are reproduced. OFF restores pure-delta.
+2. **Facing mismatch.** World deltas are direction-dependent — a source
+   skeleton facing the other way swings arms toward the character's back.
+   Fix = auto facing correction `C`: yaw estimated per rig from the L/R
+   upper-arm (fallback thigh) rest positions (`(L-R) x Z`), deltas conjugated
+   `C @ D @ C^-1`, hips translation rotated by `C`.
+
+Verified (`dev/test_retarget.py`): A-pose cm source on T-pose rig, wrist
+lands exactly where the clip's limb directions point (0.000000 m); source
+rotated 180 deg auto-detects and corrects (0.000000 m); align OFF still
+matches pure-delta semantics. Lesson: the spike proved the MATH exact but the
+SEMANTICS wrong for the main use case — real-clip testing caught what
+synthetic identical-facing tests could not.
+
+Still open from the design: mapping UIList + JSON save/load, IK foot bake,
+batch retarget (Studio).
 
 ## Effort estimate
 

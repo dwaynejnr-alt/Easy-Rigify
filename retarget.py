@@ -19,6 +19,7 @@
 # immediately. Verified exact through Rigify's constraint stack by
 # dev/spike_retarget.py (0.0000 deg / 0.000000 m wrist error).
 import bpy
+import math
 from mathutils import Matrix, Vector
 from .constants import dbg
 
@@ -188,6 +189,42 @@ def _pose_world(obj, bname):
     return obj.matrix_world @ obj.pose.bones[bname].matrix
 
 
+def _rest_dir(obj, bname):
+    """World-space rest direction of a bone (head -> tail), or None."""
+    b = obj.data.bones[bname]
+    v = (obj.matrix_world.to_3x3() @ (b.tail_local - b.head_local))
+    return v.normalized() if v.length > 1e-8 else None
+
+
+def _facing_yaw(obj, left_name, right_name):
+    """Character facing as a world yaw angle, from the left->right shoulder
+    line at rest (facing = (L - R) x Z, i.e. -Y for a Rigify character)."""
+    L = _rest_world(obj, left_name).translation
+    R = _rest_world(obj, right_name).translation
+    f = (L - R).cross(Vector((0.0, 0.0, 1.0)))
+    if f.length < 1e-6:
+        return None
+    return math.atan2(f.y, f.x)
+
+
+def _facing_correction(src, rig, mapping):
+    """Yaw rotation carrying the source character's facing onto the target's.
+
+    World deltas are direction-dependent: a clip on a skeleton that faces the
+    other way would swing arms toward the character's BACK. The facing of each
+    rig is estimated from its left/right upper-arm (or thigh) rest positions;
+    if either side is unmapped, no correction is applied."""
+    src_of = {t: s for s, t, _ in mapping}
+    for l_tgt, r_tgt in (("upper_arm_fk.L", "upper_arm_fk.R"),
+                         ("thigh_fk.L", "thigh_fk.R")):
+        if l_tgt in src_of and r_tgt in src_of:
+            yaw_s = _facing_yaw(src, src_of[l_tgt], src_of[r_tgt])
+            yaw_t = _facing_yaw(rig, l_tgt, r_tgt)
+            if yaw_s is not None and yaw_t is not None:
+                return Matrix.Rotation(yaw_t - yaw_s, 3, 'Z')
+    return Matrix.Identity(3)
+
+
 def _key_rotation(pb, frame):
     if pb.rotation_mode == 'QUATERNION':
         pb.keyframe_insert("rotation_quaternion", frame=frame)
@@ -197,9 +234,17 @@ def _key_rotation(pb, frame):
         pb.keyframe_insert("rotation_euler", frame=frame)
 
 
-def run_retarget(context, src, rig, mapping, in_place=False):
+def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
     """Bake the source armature's active action onto the rig's controls as a
     NEW action (the rig's previous action is preserved as a datablock).
+
+    align_rests (default): each control's rest is first rotated so its bone
+    direction matches the CLIP skeleton's rest direction (facing-corrected),
+    then the clip's world deltas are applied. This reproduces the clip's
+    actual limb poses — a T-pose walk lands arms at the sides even on an
+    A-pose character. Without it, deltas are applied relative to the
+    character's own rest, so any rest-pose difference becomes a permanent
+    offset (arms behind the back is the classic symptom).
     Returns (ok, message, stats)."""
     src_act = src.animation_data.action if src.animation_data else None
     if src_act is None:
@@ -219,9 +264,23 @@ def run_retarget(context, src, rig, mapping, in_place=False):
         if src_z > 1e-6:
             scale_ratio = tgt_z / src_z
 
-    # cache rest matrices once — they are frame-independent
+    # facing correction: source deltas are conjugated into the target's frame
+    C = _facing_correction(src, rig, mapping)
+    Ci = C.inverted()
+
+    # cache rest matrices once — they are frame-independent. With align_rests,
+    # the target rest used as the delta base is pre-rotated so its bone
+    # direction equals the (facing-corrected) source bone's rest direction.
     rest_src = {s: _rest_world(src, s).to_3x3() for s, _, _ in mapping}
-    rest_tgt = {t: _rest_world(rig, t).to_3x3() for _, t, _ in mapping}
+    rest_tgt = {}
+    for s, t, _ in mapping:
+        R = _rest_world(rig, t).to_3x3()
+        if align_rests:
+            d_t = _rest_dir(rig, t)
+            d_s = _rest_dir(src, s)
+            if d_t is not None and d_s is not None:
+                R = d_t.rotation_difference(C @ d_s).to_matrix() @ R
+        rest_tgt[t] = R
     rest_tgt_loc = {t: _rest_world(rig, t).translation.copy() for _, t, _ in mapping}
     src_hips_rest = (_rest_world(src, hips_pair[0]).translation.copy()
                      if hips_pair else Vector())
@@ -272,10 +331,11 @@ def run_retarget(context, src, rig, mapping, in_place=False):
 
                 M_src = _pose_world(src, s_name)
                 R_delta = M_src.to_3x3() @ rest_src[s_name].inverted()
-                R_tgt = R_delta @ rest_tgt[t_name]
+                R_tgt = C @ R_delta @ Ci @ rest_tgt[t_name]
                 pb = rig.pose.bones[t_name]
                 if use_loc:
-                    t_delta = (M_src.translation - src_hips_rest) * scale_ratio
+                    t_delta = C @ ((M_src.translation - src_hips_rest)
+                                   * scale_ratio)
                     if in_place:
                         t_delta.x = t_delta.y = 0.0
                     loc = rest_tgt_loc[t_name] + t_delta
@@ -292,9 +352,12 @@ def run_retarget(context, src, rig, mapping, in_place=False):
         context.scene.frame_set(prev_frame)
 
     stats = {"frames": f_end - f_start + 1, "bones": len(mapping),
-             "action": new_act.name, "fk_switches": n_switch}
+             "action": new_act.name, "fk_switches": n_switch,
+             "facing_yaw_deg": round(math.degrees(
+                 math.atan2(C[1][0], C[0][0])), 1)}
     dbg(f"[retarget] {src.name} -> {rig.name}: {stats['bones']} controls, "
-        f"{stats['frames']} frames -> action '{new_act.name}'")
+        f"{stats['frames']} frames, facing {stats['facing_yaw_deg']} deg, "
+        f"align={align_rests} -> action '{new_act.name}'")
     return True, (f"Retargeted {stats['frames']} frames onto "
                   f"{stats['bones']} controls -> action '{new_act.name}'"), stats
 
@@ -318,6 +381,15 @@ class AutoRigRetargetProps(bpy.types.PropertyGroup):
         description="Strip the horizontal (XY) root travel from the hips so "
                     "the character animates on the spot (game loops)",
         default=False,
+    )
+    align_rests: bpy.props.BoolProperty(
+        name="Match Clip Pose",
+        description="Align each control to the clip skeleton's rest pose "
+                    "before applying motion, so the clip's actual limb poses "
+                    "are reproduced (a T-pose walk lands arms at the sides "
+                    "even on an A-pose character). Turn off to keep offsets "
+                    "relative to your character's own rest pose instead",
+        default=True,
     )
 
 
@@ -348,7 +420,8 @@ class AUTORIG_OT_RetargetAnim(bpy.types.Operator):
 
         mapping = build_mapping(src, rig)
         ok, msg, _ = run_retarget(context, src, rig, mapping,
-                                  in_place=props.in_place)
+                                  in_place=props.in_place,
+                                  align_rests=props.align_rests)
         if ok and prev_mode == 'POSE':
             bpy.ops.object.mode_set(mode='POSE')
         self.report({'INFO'} if ok else {'ERROR'}, msg)
@@ -380,5 +453,6 @@ def draw_retarget_section(layout, context):
     kind = "Mixamo-style" if n_preset >= 4 else "name-matched"
     col.label(text=f"Clip: {act.name}  ({int(f1 - f0) + 1} frames, {kind})",
               icon='ACTION')
+    col.prop(props, "align_rests")
     col.prop(props, "in_place")
     col.operator("autorig.retarget_anim", icon='PLAY')

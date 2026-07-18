@@ -229,6 +229,31 @@ for bone_chk in ("foot_fk.L", "shin_fk.L", "hand_fk.L"):
         prev_v = v
 ok("quaternion continuity: no sign flips through the 240-deg turn")
 
+# IK controllers must ride along with the FK result (parked IK controllers
+# pin the feet if a limb is, or is switched, to IK — legs wind up during
+# turns). Check at a mid-turn frame, then flip the leg to IK and confirm the
+# deform chain STILL follows the clip.
+scn.frame_set(30)
+bpy.context.view_layer.update()
+for ik_b, fk_b in (("foot_ik.L", "foot_fk.L"), ("hand_ik.L", "hand_fk.L")):
+    M_ik = achieved(rig, ik_b)
+    M_fk = achieved(rig, fk_b)
+    err_t = (M_ik.translation - M_fk.translation).length
+    ang = M_ik.to_quaternion().rotation_difference(M_fk.to_quaternion()).angle
+    print(f"  {ik_b}: pos err {err_t:.6f} m, rot err {math.degrees(ang):.3f} deg")
+    if err_t > 2e-3 or math.degrees(ang) > 0.5:
+        fail(f"{ik_b} not tracking {fk_b}")
+foot_before = achieved(rig, "ORG-foot.L").translation.copy()
+rig.pose.bones["thigh_parent.L"]["IK_FK"] = 0.0   # force the leg to IK
+bpy.context.view_layer.update()
+foot_ik_mode = achieved(rig, "ORG-foot.L").translation
+err_sw = (foot_ik_mode - foot_before).length
+print(f"  leg switched to IK: ORG-foot moved {err_sw:.6f} m")
+if err_sw > 5e-3:
+    fail(f"leg in IK mode diverges {err_sw:.4f} m from the clip result")
+rig.pose.bones["thigh_parent.L"]["IK_FK"] = 1.0
+ok("IK controllers baked: limb correct in FK AND IK mode")
+
 # ── 2. source rotated 180 deg — the hands-behind-the-back bug class ─────────
 src.rotation_euler = Euler((0, 0, math.pi), 'XYZ')
 bpy.context.view_layer.update()

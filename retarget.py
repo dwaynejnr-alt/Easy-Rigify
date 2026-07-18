@@ -225,6 +225,17 @@ def _match_heading(d_t, d_s):
 # Targets whose rest-align keeps the character's heading (see _match_heading).
 _HEADING_PRESERVE = ("foot_fk", "toe_fk", "toe")
 
+# IK controls snapped to their FK twin's result each frame. Keying only FK
+# leaves the IK controllers parked at rest — if a limb is (or is switched)
+# to IK, it stays glued to those parked controllers and the limb winds up
+# visibly (shins twisting while the body turns over pinned feet). Baking the
+# IK controls alongside makes the clip correct in EITHER mode and lets users
+# flip a limb to IK afterward for foot polish with no snapping step.
+_IK_SNAP = (
+    ("hand_ik.L", "hand_fk.L"), ("hand_ik.R", "hand_fk.R"),
+    ("foot_ik.L", "foot_fk.L"), ("foot_ik.R", "foot_fk.R"),
+)
+
 
 def _facing_correction(src, rig, mapping):
     """Yaw rotation carrying the source character's facing onto the target's.
@@ -367,6 +378,7 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
             d, b = d + 1, b.parent
         return d
     depths = {t: depth(t) for _, t, _ in mapping}
+    mapped_tgts = {t for _, t, _ in mapping}
 
     wm = context.window_manager
     wm.progress_begin(f_start, f_end)
@@ -414,6 +426,23 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
                     prev_q[t_name] = q
                 if use_loc:
                     pb.keyframe_insert("location", frame=frame)
+                _key_rotation(pb, frame)
+
+            # snap IK controllers onto the FK result for this frame
+            context.view_layer.update()
+            for ik_name, fk_name in _IK_SNAP:
+                if fk_name not in mapped_tgts or ik_name not in rig.pose.bones:
+                    continue
+                pb = rig.pose.bones[ik_name]
+                pb.matrix = rig.pose.bones[fk_name].matrix.copy()
+                if pb.rotation_mode == 'QUATERNION':
+                    q = pb.rotation_quaternion.copy()
+                    pq = prev_q.get(ik_name)
+                    if pq is not None and pq.dot(q) < 0.0:
+                        q.negate()
+                        pb.rotation_quaternion = q
+                    prev_q[ik_name] = q
+                pb.keyframe_insert("location", frame=frame)
                 _key_rotation(pb, frame)
     finally:
         wm.progress_end()

@@ -266,8 +266,30 @@ stays absolute (hand orientation usually matters more than wrist twist), but
 if users report forearm twist, the same heading/twist-limiting treatment is
 the candidate.
 
-Still open from the design: mapping UIList + JSON save/load, IK foot bake,
-batch retarget (Studio).
+### Fourth field round (2026-07-18): IK controllers now baked too
+
+User reported the IK controllers not moving with the animation, and shin
+twist persisting only during turns even after weight smoothing. Keying only
+FK + flipping the IK_FK switches leaves the IK controllers PARKED AT REST —
+if a limb is in IK (switch silently ineffective on some rig, or the user
+flips a limb back), the limb stays glued to the parked controller and winds
+up visibly as the body turns over it. Exactly the reported symptom.
+
+Fix: `_IK_SNAP` — every frame, hand_ik/foot_ik are snapped to their FK
+twin's evaluated matrix and keyed (with the same quaternion continuity).
+The clip is now correct in EITHER mode, the IK controllers visibly follow,
+and switching a limb to IK afterward needs no snapping step (this also
+delivers the roadmap "IK foot bake" in its basic form). Test: IK controls
+track FK to 1e-6 m mid-turn, and forcing the leg to IK moves the deform
+foot 0.000000 m.
+
+Diagnostic history for this round: keyed-transfer fidelity was proven exact
+first (world-delta orientation error 0.000 deg at every turn frame,
+foot-vs-shin relative twist within 0.07 deg of the source), and the user
+confirmed bones-fine/mesh-twists before the IK observation surfaced.
+
+Still open from the design: mapping UIList + JSON save/load, IK pole-vector
+keying (pole toggle ON rigs), batch retarget (Studio).
 
 ## Effort estimate
 

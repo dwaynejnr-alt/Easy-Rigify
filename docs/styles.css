@@ -169,6 +169,18 @@ h4 {
 
 p { margin-bottom: 0.9rem; }
 
+img {
+    max-width: 100%;
+    border-radius: 6px;
+    border: 1px solid #e1e4e8;
+    margin: 0.75rem 0 1.25rem;
+    display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+    img { border-color: #30363d; }
+}
+
 .intro {
     color: #57606a;
     margin-bottom: 1.5rem;

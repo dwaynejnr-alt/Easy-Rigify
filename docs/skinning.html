@@ -52,6 +52,7 @@
                         </ul>
                     </li>
                 </ul>
+                <img src="images/skin-mesh-setup.jpg" alt="Mesh Setup panel listing detected meshes with type dropdowns">
                 <div class="note">
                     Name your objects clearly (e.g. "Body", "UpperTeeth", "EyeballL") and auto-detect will guess the correct type. You can always override it.
                 </div>
@@ -63,6 +64,7 @@
                     <li><strong>Envelope</strong> — uses bone envelope volumes instead of heat diffusion. Much faster on high vertex count meshes but less precise. Use when Automatic Weight fails with a "failed to find solution" error (usually caused by interior geometry or non-manifold topology).</li>
                     <li><strong>Heat Map</strong> (the full pipeline) — runs Blender's Automatic Weight first, then passes the result through a multi-stage post-processing pipeline. Face bones are fully protected: their weights are snapshotted before any tightening runs. Use for final character binding, when you want clean joint transitions out of the box, or when you want to minimize manual weight painting.</li>
                 </ul>
+                <img src="images/skin-bind-method.jpg" alt="Smart Bind panel with Bind Method dropdown set to Heat Map">
 
                 <p><strong>Max Influences</strong> [slider, 1–8, default 4] — the maximum number of bones that can influence each vertex.</p>
                 <ul>
@@ -82,6 +84,7 @@
                     <li><strong>Smooth (iterations)</strong> — how many passes of neighbour-averaging to run. 1–2 = very light, mostly removes spike artefacts. 3–5 = standard, good gradient between bones (default 3). 8+ = heavy, can over-blur finger weights.</li>
                     <li><strong>Smooth Factor</strong> — how much each vertex blends toward the average of its neighbours per pass. 0.1 = very subtle. 0.3 = standard (default). 0.7+ = aggressive — only use with 1–2 iterations or you'll lose detail.</li>
                 </ul>
+                <img src="images/skin-weight-options.jpg" alt="Weight Options panel with Smooth iterations and Smooth Factor sliders">
                 <div class="note">
                     Best results: 3 passes × 0.3 factor for a standard body mesh. 2 passes × 0.5 factor for a high-res mesh where gradients are already fairly clean from ARMATURE_AUTO.
                 </div>
@@ -97,6 +100,7 @@
                     <li><strong>Gentle</strong> — light cleanup (bleeding kept at ~65–75%). Use when ARMATURE_AUTO is already clean and you just want minor polish.</li>
                     <li><strong>Aggressive</strong> — heavy cleanup (bleeding reduced to ~5–25%). Use when your character has very close-together limbs and a lot of unwanted cross-bleeding.</li>
                 </ul>
+                <img src="images/skin-joint-tightening.jpg" alt="Joint Tightening panel with per-region enable toggles and feather sliders">
 
                 <p>Each section row (Fingers / Forearms / Upper Arms / Shins / Thighs / Shoulders / Spine / Neck) has two controls:</p>
                 <ul>
@@ -133,6 +137,7 @@
                 <h3>Smart Bind / Unbind</h3>
                 <p><strong>Smart Bind</strong> [large button] — runs the selected bind method on all enabled meshes. After completion, a status line appears below the button showing how many meshes were bound, and whether any fell back to Envelope or failed.</p>
                 <p><strong>Unbind</strong> — removes the Armature modifier and all vertex groups from the currently active mesh object. Does not affect other meshes. Use before re-binding a single mesh.</p>
+                <img src="images/skin-smart-bind.jpg" alt="Smart Bind button and bound-mesh status line">
             </section>
 
             <section id="advanced-weights">
@@ -150,6 +155,7 @@
                 </ol>
                 <p><strong>Exit Weight Paint</strong> — exits Weight Paint mode and restores DEF bone visibility to whatever state it was in before you entered.</p>
                 <p><strong>Show / Hide DEF Bones</strong> [toggle] — toggles visibility of the DEF bone layer on the Rigify rig. DEF bones are the actual deform bones (prefixed DEF-). Useful to quickly check which bones are present without entering Weight Paint.</p>
+                <img src="images/skin-weight-paint.jpg" alt="Weight Paint section with Enter Weight Paint button">
 
                 <h3>2.2 Cleanup Weights</h3>
                 <p><strong>Full Cleanup</strong> — runs all four cleanup operations in one click:</p>
@@ -160,6 +166,7 @@
                     <li>Smooth — runs a gentle Laplacian smooth</li>
                 </ol>
                 <p>Run after manual weight painting to tidy everything up. Safe to run multiple times.</p>
+                <img src="images/skin-full-cleanup.jpg" alt="Cleanup Weights panel with Full Cleanup, Normalize, Limit, and Remove Zero buttons">
 
                 <p><strong>Normalize</strong> — divides each vertex's weights so they sum exactly to 1.0. Does not remove any bones or change which bones influence a vertex — just rescales the values. Use when you've painted weights that look correct visually but the mesh deforms with unexpected volume changes.</p>
 
@@ -174,6 +181,7 @@
                 <div class="note">
                     Use Prune before Limit to make sure the "kept" bones are only meaningful ones, not tiny bleed weights that shouldn't count toward the limit.
                 </div>
+                <img src="images/skin-prune-clamp.jpg" alt="Advanced Cleanup panel with Threshold/Prune and Max Weight/Clamp controls">
 
                 <p><strong>Max Weight</strong> [slider 0.10–1.0] + <strong>Clamp</strong> — caps the weight of the currently active vertex group so no vertex has more than Max Weight for that bone. The excess weight is redistributed proportionally to the other bones at that vertex. 0.80 = standard cap (bone can be at most 80% dominant). 0.60 = forces more blending with neighbours. 1.0 = effectively disables clamping. Use when a single bone looks too rigid or "sticky" — parts of the mesh follow it 100% when they should be blending with adjacent bones.</p>
                 <p><strong>How to use:</strong> in Weight Paint, select the bone group you want to cap, go back to Object mode (or stay in Weight Paint — both work), set Max Weight, click Clamp.</p>
@@ -194,6 +202,7 @@
                 <div class="note">
                     .001 transition bones (DEF-upper_arm.L.001, DEF-thigh.L.001, etc.) are protected and will NOT be cleaned — they are joint-transition bones by design and need the blended weight they have.
                 </div>
+                <img src="images/skin-fix-bleeding.jpg" alt="Joint Cleaner panel with Fix Bleeding, Analyze, and Manual Clean strength buttons">
                 <p><strong>Analyze</strong> — prints a per-bone bleeding report to the System Console without making any changes. Shows which bones are bleeding and by how much. Use before Fix Bleeding to understand what the fixer will do.</p>
                 <p><strong>Manual Clean — Light / Moderate / Aggressive</strong> — manual cleaning presets for when you want direct control. Select the mesh, make sure you're in Object mode, then click the desired strength. Light removes only obvious long-range bleeding; Moderate is balanced, similar to Fix Bleeding auto mode; Aggressive is tight cleanup, may remove some intentional blending at joints.</p>
                 <p><strong>Smooth Twist Weights</strong> — applies a targeted smooth specifically to twist bone pairs (the .001 limb bones: DEF-upper_arm.L.001, DEF-forearm.L.001, DEF-thigh.L.001, etc.). Smooths the gradient between the main bone and its twist partner. Use when you see a visible stripe or hard line on the upper arm or thigh during arm/leg twisting animations.</p>
@@ -217,6 +226,7 @@
                 <h2>3. Smart Weight Transfer</h2>
                 <p>Smart Weight Transfer copies vertex group weights from one mesh to another. This is used when you have one well-painted mesh (the source) and want to apply its weights to a related mesh (the target) without binding from scratch.</p>
                 <p><strong>Common use cases:</strong> transferring body weights onto a shirt or jacket; updating a revised mesh version with weights from the old version; copying weights from a decimated/proxy mesh to the final high-res mesh.</p>
+                <img src="images/skin-weight-transfer.jpg" alt="Smart Weight Transfer panel with Transfer Method dropdown and Batch Transfer button">
 
                 <h3>How to use</h3>
                 <ol>

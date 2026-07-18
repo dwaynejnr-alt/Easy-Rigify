@@ -43,11 +43,13 @@
                     <li>Your character mesh should be in the scene at the correct scale</li>
                 </ul>
                 <p>Open: View3D → Sidebar (N panel) → Easy Rigify → Rig tab. The Rig tab handles three sequential operations: adding the metarig template to the scene, aligning the metarig bones to your markers, and generating the final Rigify rig. It also provides a Custom Preserve system for safely regenerating a rig after markers and rig tweaks.</p>
+                <img src="images/rig-tab-overview.jpg" alt="Rig tab panel showing Add Meta Rig, Align, Rigify, and Regenerate sections">
             </section>
 
             <section id="metarig">
                 <h2>Add Meta Rig</h2>
                 <p>The metarig is the editable skeleton template that Rigify uses. You add it once, align it to your markers, then generate the final rig from it. You do NOT animate with the metarig — it is only for setup.</p>
+                <img src="images/rig-add-metarig.jpg" alt="Add Meta Rig section highlighted, with Human (No Face) and Human (With Face) buttons">
 
                 <h3>Human (No Face)</h3>
                 <p>Imports a pre-configured Rigify Human metarig that includes:</p>
@@ -73,6 +75,7 @@
                 <h2>Align</h2>
                 <h3>Align Rig to Markers</h3>
                 <p>The core operation of the addon. Reads every placed marker and moves each metarig bone head/tail to the marker.</p>
+                <img src="images/rig-align.jpg" alt="Align section highlighted with the Align Rig to Markers button">
                 <p><strong>Requirements before clicking:</strong></p>
                 <ul>
                     <li>The metarig must be the active object</li>
@@ -98,6 +101,7 @@
                 <h2>Rigify</h2>
                 <h3>Generate Rig</h3>
                 <p>Runs Rigify's built-in Generate step on the active metarig.</p>
+                <img src="images/rig-generate.jpeg" alt="Rigify section highlighted with the Generate Rig button">
                 <p><strong>What happens:</strong></p>
                 <ol>
                     <li>The addon sets the correct <code>primary_rotation_axis</code> on finger bones (required by Rigify for correct finger curl direction)</li>
@@ -123,6 +127,7 @@
                 <div class="note">
                     <strong>Why you need this:</strong> Rigify's standard Generate button overwrites the generated rig completely. Any manual changes you made to the generated rig are erased. The Backup → Restore → Regenerate workflow preserves those changes.
                 </div>
+                <img src="images/rig-regenerate-preserve.jpeg" alt="Regenerate Rigify and Custom Preserve section with Metarig, Generated Rig, Backup, and Restore controls">
 
                 <ul>
                     <li><strong>Metarig</strong> [object picker] — the source metarig to regenerate from (usually named "metarig")</li>

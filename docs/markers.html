@@ -103,7 +103,9 @@
 
                 <h3>Place All Fingers — walkthrough</h3>
                 <p>Clicking "Place All Fingers" starts an interactive two-click modal session for each finger. Click the tip first, then the knuckle, for the thumb; move to the index finger and do the same; repeat for all five fingers. You can undo each click and redo it.</p>
+                <img src="images/markers-place-fingers-1.jpeg" alt="Finger markers placed on a hand mesh, tip and knuckle points highlighted">
                 <p>After all five clicks, this mirrors the finger markers from left to right. You can then manually adjust each marker to fit the character's fingers for better bone placement.</p>
+                <img src="images/markers-place-fingers-2.png" alt="Diagram of finger tip and knuckle click order">
                 <div class="note warn">
                     Always mirror any adjustment to the left or right side when done.
                 </div>
@@ -117,6 +119,7 @@
 
                 <h3>Show Facial Markers</h3>
                 <p>Expands or collapses the facial marker section. When off, facial markers and their detection steps are hidden. Turn this on only when your character has a face rig. Leave it off for body-only rigs (the Human (No Face) metarig).</p>
+                <img src="images/markers-show-facial.png" alt="Facial markers panel with mesh pickers and detection steps">
 
                 <h3>Select Meshes</h3>
                 <p>You must assign mesh objects before running any detection step. The system uses these meshes to project marker positions onto the correct geometry.</p>
@@ -134,24 +137,32 @@
 
                 <h4>Step 1 — Teeth &amp; Tongue</h4>
                 <p>Detects the position and orientation of upper and lower teeth (FACE_TEETH_T, FACE_TEETH_B) and tongue segments (FACE_TONGUE, FACE_TONGUE_001, FACE_TONGUE_002). Markers need manual adjustment to fit the teeth and tongue — cube-shaped empties for teeth, plain axes for the tongue. Requires Teeth and/or Tongue enabled above with meshes assigned.</p>
+                <img src="images/markers-teeth-tongue.jpeg" alt="Teeth and tongue markers on a jaw mesh">
 
                 <h4>Step 2 — Brow &amp; Eyes</h4>
                 <p>Places 4 markers on each eyebrow and a marker for each eyeball center. Requires Brow Mesh assigned, and eyeball mesh(es) assigned if available.</p>
+                <img src="images/markers-brow-eyes.jpeg" alt="Eyebrow and eye center markers on a head mesh">
 
                 <h4>Step 3 — Lips</h4>
                 <p>Detects the lip contour: upper lip (FACE_LIP_T, FACE_MOUTH_TOP_L/R), lower lip (FACE_LIP_B, FACE_MOUTH_BOT_L/R), and mouth corners (FACE_MOUTH_CORNER_L/R). Requires Body Mesh assigned; also needs the teeth marker placed for better detection. Lip markers usually need a little adjustment to sit correctly on the character's lips.</p>
+                <img src="images/markers-lips.jpeg" alt="Lip contour markers around a character's mouth">
 
                 <h4>Step 4 — Nose</h4>
                 <p>Detects nose bridge (L&amp;R), nose tip, nose wing (L&amp;R), and nose bottom. Requires Body Mesh assigned.</p>
+                <img src="images/markers-nose.jpeg" alt="Nose bridge, tip, and wing markers on a face mesh">
 
                 <h4>Step 5 — Eyelids</h4>
                 <p>Detects upper/lower eyelid, eyelid crease points, inner/outer lid corners, and Brow_bot_outer (extends outside the eyelid toward the ear). Requires Body Mesh assigned; eyeball mesh(es) highly recommended for accurate eyelid projection.</p>
+                <img src="images/markers-eyelids.jpeg" alt="Eyelid crease and corner markers around an eye">
 
                 <h4>Step 6 — Chin / Cheek / Jaw</h4>
                 <p>Detects chin center and sides (FACE_CHIN, FACE_CHIN_L/R), jaw line control points (FACE_JAW, FACE_JAW_SIDE_L/R), cheek high points (FACE_CHEEK_T/B_L/R), and ear attachment point (FACE_EAR_L/R). Requires Body Mesh assigned.</p>
+                <img src="images/markers-chin-cheek-jaw-1.jpeg" alt="Chin, cheek, jaw, and ear markers, front view">
+                <img src="images/markers-chin-cheek-jaw-2.jpeg" alt="Chin, cheek, jaw, and ear markers, side view">
 
                 <h4>Step 7 — Forehead</h4>
                 <p>Detects forehead center (FACE_FOREHEAD), forehead side arc (FACE_FOREHEAD_SIDE_L/R), and temple (FACE_TEMPLE_L/R). Requires Body Mesh assigned.</p>
+                <img src="images/markers-forehead.jpg" alt="Forehead and temple markers on top of a head mesh">
 
                 <h3>After detection</h3>
                 <p>Inspect the face markers in the viewport. The system projects markers onto the nearest mesh surface geometry — for stylized characters, some markers may need manual fine-tuning.</p>

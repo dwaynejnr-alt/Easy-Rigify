@@ -154,6 +154,8 @@ from .pipeline      import draw_skinning_tab
 from .weight_tools  import draw_weights_tab, draw_visualization_section
 from .fan_bones     import draw_fan_bones_section
 from .game_export   import AUTORIG_OT_ExportGame, draw_game_export_section
+from .retarget      import (AutoRigRetargetProps, AUTORIG_OT_RetargetAnim,
+                            draw_retarget_section)
 from .utils         import get_icon
 # DEV-ONLY data-generation tools: registered only when the dev/ folder exists
 # (the shipped zip excludes dev/, so customer installs never see these panels;
@@ -234,6 +236,8 @@ class AUTORIG_PT_Main(bpy.types.Panel):
             draw_weights_tab(layout, context)
         elif tab == 'TOOLS':
             draw_fan_bones_section(layout, context)
+            layout.separator()
+            draw_retarget_section(layout, context)
             layout.separator()
             draw_game_export_section(layout, context)
             layout.separator()
@@ -317,6 +321,9 @@ CLASSES = (
     FANBONE_OT_remove,
     # Game export
     AUTORIG_OT_ExportGame,
+    # Animation retarget (PropertyGroup before the operator that uses it)
+    AutoRigRetargetProps,
+    AUTORIG_OT_RetargetAnim,
     # Custom rig preserve (PropertyGroup before operators)
     AutoRigPreserveProps,
     AUTORIG_OT_PreserveBackup,
@@ -411,6 +418,8 @@ def register():
         type=WeightAdvProperties)
     bpy.types.Scene.fan_bone_props = bpy.props.PointerProperty(
         type=FanBoneProperties)
+    bpy.types.Scene.autorig_retarget = bpy.props.PointerProperty(
+        type=AutoRigRetargetProps)
     bpy.types.Scene.autorig_preserve_props = bpy.props.PointerProperty(
         type=AutoRigPreserveProps)
     bpy.types.Scene.autorig_show_hints = bpy.props.BoolProperty(
@@ -653,6 +662,7 @@ def unregister():
     if hasattr(bpy.types.Scene, 'fan_bone_props'):
         del bpy.types.Scene.fan_bone_props
     if hasattr(bpy.types.Scene, 'autorig_preserve_props'):
+        del bpy.types.Scene.autorig_retarget
         del bpy.types.Scene.autorig_preserve_props
     if hasattr(bpy.types.Scene, 'autorig_tab'):
         del bpy.types.Scene.autorig_tab

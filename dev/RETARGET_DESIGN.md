@@ -174,6 +174,27 @@ the spike did. (2) Translation must be delta-from-rest scaled, then added to
 the TARGET's rest position (absolute scaled positions would sink the character
 by the hip-height difference).
 
+## Implementation status (retarget.py, shipped 2026-07-18)
+
+v1 shipped: `retarget.py` — `build_mapping` (Mixamo preset incl. fingers with
+prefix-stripping and candidate target names; fuzzy synonym fallback for
+unknown rigs, fingers preset-only; parents-first ordering by target depth) +
+`run_retarget` (delta bake as a NEW action, previous action kept with a fake
+user; IK/FK switches set AND keyed to FK; one view-layer update per depth
+LEVEL per frame instead of per bone — siblings are independent, ~6x fewer
+updates) + minimal Tools-tab UI (source picker with poll excluding generated
+rigs, clip/frame readout with Mixamo-vs-fuzzy indicator, In Place toggle
+stripping hips XY, Retarget button).
+
+Verified headless (Blender 4.5, `dev/test_retarget.py`): 13 preset pairs on a
+Mixamo-named A-pose/cm-scale source, wrist world-position error 0.000000 m
+through the full Rigify stack, previous rig action preserved, 4 IK/FK
+switches keyed; fuzzy path resolves a UE-named skeleton (10 pairs, both
+sides). Addon register/unregister/re-register smoke-tested.
+
+Still open from the design: mapping UIList + JSON save/load, rest-align
+option, IK foot bake, batch retarget (Studio).
+
 ## Effort estimate
 
 - Delta-bake core + Mixamo preset + minimal UI (picker, auto-map, button):

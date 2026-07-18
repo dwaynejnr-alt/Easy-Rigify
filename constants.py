@@ -511,10 +511,21 @@ PALM_BONES_L = [
 # (~along -Y), so aligning its Z to +Y is (anti)parallel to the bone direction →
 # align_roll degenerates and the foot twists. A flat foot wants Z up (+Z), same
 # as the toe.
+#
+# FOOT gets an extra 180°: align_roll(+Z) on the forward/down foot lands its X
+# axis OPPOSITE the thigh/shin X (measured against the stock metarig, whose
+# foot X matches the chain). The leg limb generates with rotation_axis='x', so
+# Rigify trusts local X when building the twist interpolation — a flipped foot
+# X made a plain foot pitch bleed ~23% of its angle into shin twist
+# (DEF-shin.001). The +180° restores the stock convention: foot X == shin X.
+# The toe is NOT part of the limb axis chain (stock's own toe X is flipped),
+# so it stays at 0.
 # ─────────────────────────────────────────────────────────────────────────────
+_PI = 3.141592653589793
 ROLL_RULES = [
     (("upper_arm.", "forearm.", "hand."), Vector((0, -1, 0)),  0.0),
     (("shoulder.",),                      Vector((0,  0, 1)),  0.0),
     (("thigh.", "shin."),                 Vector((0,  1, 0)),  0.0),
-    (("toe.", "foot."),                   Vector((0,  0, 1)),  0.0),
+    (("foot.",),                          Vector((0,  0, 1)),  _PI),
+    (("toe.",),                           Vector((0,  0, 1)),  0.0),
 ]

@@ -43,6 +43,8 @@ HEAVY_DIRS = {"models", "wheels", "native"}
 SKIP_DIRS = HEAVY_DIRS | {
     ".git", ".github", ".claude", "dev", "Backup", "__pycache__",
     "face_dataset", "debug_face_infer",
+    "docs",   # GitHub Pages documentation site — online only, never shipped
+    "dist",   # build output directory
 }
 
 LITE_MANIFEST = '''\

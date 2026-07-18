@@ -178,13 +178,31 @@ Lesson: verify the DEFORMED MESH SHAPE (bbox / vertex positions) AND bone
 sizes/positions, not just bone names and counts. All three bugs above passed
 name/count checks.
 
+### Animation bake (shipped 2026-07-18)
+
+`include_anim` on the operator/`build_and_export`. The clean skeleton is frozen
+(its DEF constraints had to be stripped), but the ORIGINAL rig still animates —
+so each clean bone gets a temporary world-space Copy Transforms constraint
+targeting its source bone there (via the rename map returned by
+`_rename_for_target`), and `nla.bake` with visual keying converts that into
+plain keyframes over the active action's frame range. Merged limbs follow their
+BASE segment (twist loss is inherent to merge mode); `root` follows Rigify's
+root control bone so root motion survives. FBX gains `bake_anim_*` settings
+(active action only, no NLA, `anim_simplify` exposed, default 0 = lossless).
+
+Verified headless (Blender 4.5, full face metarig, 160 deform bones): baked
+`lowerarm_l` world position matches `DEF-forearm.L` to 0.000000 at both keyed
+frames; root motion baked; original rig's action untouched; FBX reimports with
+the action. Test: `dev/test_anim_bake.py`.
+
 ### Remaining refinements
 
 - Twist-bone preservation mode (UE `*_twist_01`) — currently merge-only.
 - Face deform bones (60+ on a full face rig) export as-is; a "strip face"
   option may be wanted for game skeletons.
-- Animation bake (static skeleton + mesh only right now).
+- Multi-action export (all actions / NLA strips) — currently active action only.
 - In-engine validation of the FBX scale/axis matrices.
+- Phase 2: retarget EXTERNAL animations (Mixamo/mocap) ONTO the generated rig.
 
 ## Tier fit
 

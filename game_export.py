@@ -243,7 +243,9 @@ def _rename_for_target(arm, meshes, target):
     """Rename deform bones (and matching vertex groups, kept in lockstep) to the
     target's convention. The spine chain is named positionally (pelvis / spine_0N /
     neck / head) because Rigify deforms neck+head via the top spine segments. Limbs
-    and fingers: UE5 Mannequin names for Unreal, stripped core names for Unity."""
+    and fingers: UE5 Mannequin names for Unreal, stripped core names for Unity.
+    Returns {old_name: new_name} so the animation bake can find each clean bone's
+    source bone on the original rig."""
     renames = {}
 
     # Spine chain (also produces the neck + head bones both engines expect).
@@ -272,6 +274,61 @@ def _rename_for_target(arm, meshes, target):
             vg = m.vertex_groups.get(old)
             if vg:
                 vg.name = new
+    return renames
+
+
+def _bake_animation(context, rig, clean, renames):
+    """Bake the original rig's active action onto the clean skeleton.
+
+    The clean skeleton was frozen to rest (its DEF constraints had to go — their
+    MCH-/ORG- targets no longer exist on it). The ORIGINAL rig still animates
+    normally, so each clean bone gets a temporary world-space Copy Transforms
+    constraint targeting its source bone there, and a visual-keying bake converts
+    that into plain keyframes. Merged limbs follow their BASE segment — the .001
+    twist detail is inherently dropped by merge mode. 'root' follows Rigify's
+    root control bone so root motion survives.
+
+    Returns (n_frames, message) — n_frames 0 means nothing was baked."""
+    act = rig.animation_data.action if rig.animation_data else None
+    if act is None:
+        return 0, "no action on the rig"
+
+    # clean bone -> source bone on the original rig
+    source_of = {new: old for old, new in renames.items()}
+    for pb in clean.pose.bones:
+        src = source_of.get(pb.name, pb.name if pb.name in rig.pose.bones else None)
+        if pb.name == "root":
+            src = "root" if "root" in rig.pose.bones else None
+        if src is None:
+            continue                      # no source — bone stays at rest
+        con = pb.constraints.new('COPY_TRANSFORMS')
+        con.target = rig
+        con.subtarget = src
+        con.target_space = con.owner_space = 'WORLD'
+
+    f_start, f_end = (int(round(f)) for f in act.frame_range)
+    prev_frame = context.scene.frame_current
+
+    for o in context.selected_objects:
+        o.select_set(False)
+    clean.select_set(True)
+    context.view_layer.objects.active = clean
+    bpy.ops.object.mode_set(mode='POSE')
+    for pb in clean.pose.bones:
+        pb.bone.select = True
+    bpy.ops.nla.bake(
+        frame_start=f_start, frame_end=f_end,
+        only_selected=True, visual_keying=True,
+        clear_constraints=True,           # drop the temp Copy Transforms
+        use_current_action=True, bake_types={'POSE'},
+    )
+    bpy.ops.object.mode_set(mode='OBJECT')
+    context.scene.frame_set(prev_frame)
+
+    if clean.animation_data and clean.animation_data.action:
+        clean.animation_data.action.name = act.name + "_game"
+    n = f_end - f_start + 1
+    return n, f"baked {n} frames"
 
 
 # FBX settings are the substance of a game export, not a wrapper. Per-target
@@ -294,9 +351,14 @@ _FBX_SETTINGS = {
 
 
 def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
-                     apply_modifiers=False, add_leaf_bones=False):
+                     apply_modifiers=False, add_leaf_bones=False,
+                     include_anim=False, anim_simplify=1.0):
     """Full pipeline: validate -> clean skeleton -> merge -> root -> rename ->
-    FBX. Returns (ok, message, stats).
+    [bake animation] -> FBX. Returns (ok, message, stats).
+
+    include_anim: bake the rig's active action onto the clean skeleton and export
+    it. anim_simplify: FBX curve simplification (0 = every frame kept, 1 = default
+    lossy compression; only used when animation is exported).
 
     apply_modifiers=False exports the authored mesh cage (game-appropriate); True
     bakes non-armature modifiers like Subsurf into the exported mesh, which can
@@ -344,10 +406,20 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
     # 3. merge twist segments, 4. root, 5. rename to the target convention
     n_merged = _merge_segments(context, clean, dup_meshes)
     _add_root(context, clean)
-    _rename_for_target(clean, dup_meshes, target)
+    renames = _rename_for_target(clean, dup_meshes, target)
+
+    # 5b. bake the active action onto the clean skeleton (optional)
+    n_frames = 0
+    anim_note = ""
+    if include_anim:
+        try:
+            n_frames, anim_note = _bake_animation(context, rig, clean, renames)
+        except Exception as e:
+            _cleanup(clean, dup_meshes)
+            return False, f"Animation bake failed: {e}", {}
 
     stats = {"bones": len(clean.data.bones), "merged": n_merged,
-             "meshes": len(dup_meshes)}
+             "meshes": len(dup_meshes), "frames": n_frames}
 
     # 6. export selection
     for o in context.selected_objects:
@@ -363,10 +435,18 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
         object_types={'ARMATURE', 'MESH'},
         use_mesh_modifiers=apply_modifiers,
         add_leaf_bones=add_leaf_bones,
-        bake_anim=False,
+        bake_anim=n_frames > 0,
         global_scale=1.0,
         path_mode='COPY',
     )
+    if n_frames > 0:
+        kw.update(
+            bake_anim_use_all_bones=True,
+            bake_anim_use_nla_strips=False,
+            bake_anim_use_all_actions=False,   # only the baked action
+            bake_anim_force_startend_keying=True,
+            bake_anim_simplify_factor=anim_simplify,
+        )
     kw.update(_FBX_SETTINGS.get(target, _FBX_SETTINGS['UNITY']))
     try:
         bpy.ops.export_scene.fbx(**kw)
@@ -390,9 +470,12 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
         pass
 
     dbg(f"[game_export] {target}: {stats['bones']} bones, "
-        f"{stats['merged']} merged, {stats['meshes']} mesh(es) -> {filepath}")
+        f"{stats['merged']} merged, {stats['meshes']} mesh(es), "
+        f"{stats['frames']} anim frames -> {filepath}")
+    anim_part = (f", {n_frames} anim frames" if n_frames > 0
+                 else f", no animation ({anim_note})" if include_anim else "")
     return True, (f"Exported {stats['bones']}-bone {target} skeleton "
-                  f"({stats['meshes']} mesh)"), stats
+                  f"({stats['meshes']} mesh{anim_part})"), stats
 
 
 def _cleanup(clean, dup_meshes):
@@ -445,6 +528,20 @@ class AUTORIG_OT_ExportGame(bpy.types.Operator):
                     "bone length",
         default=False,
     )
+    include_anim: bpy.props.BoolProperty(
+        name="Include Animation",
+        description="Bake the rig's current action onto the game skeleton and "
+                    "export it with the FBX. Exports mesh + skeleton only when "
+                    "the rig has no action",
+        default=False,
+    )
+    anim_simplify: bpy.props.FloatProperty(
+        name="Anim Simplify",
+        description="FBX animation curve simplification. 0 keeps every baked "
+                    "frame exactly; higher values shrink the file but can drift "
+                    "on fast motion",
+        default=0.0, min=0.0, max=10.0,
+    )
 
     def invoke(self, context, event):
         if _find_game_rig(context) is None:
@@ -460,7 +557,8 @@ class AUTORIG_OT_ExportGame(bpy.types.Operator):
         ok, msg, _ = build_and_export(
             context, bpy.path.ensure_ext(self.filepath, ".fbx"),
             target=self.target, apply_modifiers=self.apply_modifiers,
-            add_leaf_bones=self.add_leaf_bones)
+            add_leaf_bones=self.add_leaf_bones,
+            include_anim=self.include_anim, anim_simplify=self.anim_simplify)
         self.report({'INFO'} if ok else {'ERROR'}, msg)
         return {'FINISHED'} if ok else {'CANCELLED'}
 

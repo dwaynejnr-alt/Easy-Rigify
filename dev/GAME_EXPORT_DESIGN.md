@@ -204,7 +204,8 @@ the action. Test: `dev/test_anim_bake.py`.
 - In-engine validation of the FBX scale/axis matrices.
 - Phase 2: retarget EXTERNAL animations (Mixamo/mocap) ONTO the generated rig.
 
-## Tier fit
+## Tier fit (DECIDED 2026-07-18)
 
-Game export rounds out the core pipeline → **Full edition**. Retargeting and
-batch export are heavier and production-oriented → **Studio tier**.
+Tiers: Lite / Full / **Team (5-seat)** — "Studio" renamed. Game export ships
+in BOTH editions (Lite included). Retargeting ships in Full only (Lite-gated
+via LITE_BUILD). Batch export/retarget = Team-tier candidates when built.

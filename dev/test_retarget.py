@@ -32,6 +32,7 @@ pkg.__path__ = []
 sys.modules["erpkg"] = pkg
 const = types.ModuleType("erpkg.constants")
 const.dbg = lambda *a, **k: print(*a)
+const.LITE_BUILD = False
 sys.modules["erpkg.constants"] = const
 spec = importlib.util.spec_from_file_location(
     "erpkg.retarget", r"d:\rig_addon_pro\retarget.py")

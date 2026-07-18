@@ -21,7 +21,7 @@
 import bpy
 import math
 from mathutils import Matrix, Vector
-from .constants import dbg
+from .constants import dbg, LITE_BUILD
 
 
 # ── Source-name presets ──────────────────────────────────────────────────────
@@ -565,6 +565,10 @@ class AUTORIG_OT_RetargetAnim(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        if LITE_BUILD:
+            self.report({'ERROR'},
+                        "Animation retargeting is a full-edition feature.")
+            return {'CANCELLED'}
         props = context.scene.autorig_retarget
         src = props.source
         rig = find_target_rig(context)
@@ -734,6 +738,10 @@ class AUTORIG_OT_RetargetMapLoad(bpy.types.Operator):
 
 
 def draw_retarget_section(layout, context):
+    # Full-edition feature: Lite doesn't show the section at all (same
+    # convention as the EasyDetect AI buttons — absent, not greyed out).
+    if LITE_BUILD:
+        return
     box = layout.box()
     box.label(text="Animation Retarget", icon='ANIM')
     rig = find_target_rig(context)

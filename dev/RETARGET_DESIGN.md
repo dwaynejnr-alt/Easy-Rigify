@@ -319,8 +319,10 @@ keying (pole toggle ON rigs), batch retarget (Studio).
 - Mapping UIList + JSON save/load: meaningful additional UI work.
 - IK foot bake + batch: separable follow-ups.
 
-## Tier fit
+## Tier fit (DECIDED 2026-07-18)
 
-Per GAME_EXPORT_DESIGN.md: retargeting is production-oriented → **Studio
-tier**. Mixamo-preset retarget could arguably sit in Full as a taste of it,
-with mapping editor + batch reserved for Studio — decide at ship time.
+Tiers are now: Lite / **Full** / **Team (5-seat)** — "Studio" renamed.
+Retargeting ships in the **Full edition** (gated out of Lite via
+`LITE_BUILD`, same convention as the AI buttons: section absent, operator
+guarded). Game export ships in BOTH editions including Lite. Batch retarget
+remains the Team-tier candidate when built.

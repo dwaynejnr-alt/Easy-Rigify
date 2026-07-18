@@ -21,6 +21,8 @@ Thumbs.db
 # ---- Blender assets / packaged builds (multi-GB) ----
 *.blend
 *.blend1
+!/armature_presets/Human_Metarig.blend
+!/armature_presets/Human_Metarig_with_face.blend
 *.zip
 
 # ---- Stale backups / build intermediates ----

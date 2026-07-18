@@ -19,7 +19,7 @@
 bl_info = {
     "name": "Easy Rigify",
     "author": "Dwayne Jones",
-    "version": (1, 2, 0),
+    "version": (1, 2, 1),
     "blender": (4, 2, 0),
     "location": "View3D > Sidebar > Easy Rigify",
     "description": "Place markers then auto-align a Rigify metarig",

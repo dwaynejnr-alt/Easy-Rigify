@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "easy_rigify"
-version = "1.2.0"
+version = "1.2.1"
 name = "Easy Rigify"
 tagline = "Place markers, auto-align a Rigify metarig, smart skinning"
 maintainer = "Dwayne Jones"

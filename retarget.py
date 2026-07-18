@@ -207,23 +207,14 @@ def _facing_yaw(obj, left_name, right_name):
     return math.atan2(f.y, f.x)
 
 
-def _match_heading(d_t, d_s):
-    """Rotate d_s about world Z so its horizontal heading equals d_t's.
-
-    Used for feet/toes: their pitch must match the clip (floor contact), but
-    the HEADING must stay the character's own. Forcing the clip's foot yaw
-    crams any rest heading difference (toe-out stance, etc.) into the ankle,
-    and Rigify's shin twist bones render that as the whole shin twisting."""
-    ht = Vector((d_t.x, d_t.y, 0.0))
-    hs = Vector((d_s.x, d_s.y, 0.0))
-    if ht.length < 1e-4 or hs.length < 1e-4:
-        return d_s
-    yaw = math.atan2(ht.y, ht.x) - math.atan2(hs.y, hs.x)
-    return Matrix.Rotation(yaw, 3, 'Z') @ d_s
-
-
-# Targets whose rest-align keeps the character's heading (see _match_heading).
-_HEADING_PRESERVE = ("foot_fk", "toe_fk", "toe")
+# Targets that are NEVER rest-aligned — they keep the character's own rest and
+# receive only the clip's rotation DELTAS. Feet/toes: the clip's foot rest
+# pitch is correct for the CLIP skeleton's ankle height and foot shape, not
+# the character's. Matching it tilts the character's sole off the floor (toes
+# in the air), and Rigify's foot->shin coupling renders that constant offset
+# as the shin visibly twisting. Delta-only keeps the sole flat at neutral
+# while heel-strike/toe-off/turn rotations still come through.
+_DELTA_ONLY = ("foot_fk", "toe_fk", "toe")
 
 # IK controls snapped to their FK twin's result each frame. Keying only FK
 # leaves the IK controllers parked at rest — if a limb is (or is switched)
@@ -316,14 +307,11 @@ def run_retarget(context, src, rig, mapping, in_place=False, align_rests=True):
         # assembly ~90 deg around the pivot head and drops the character.
         # It stays delta-based; only bones that lie along an actual body part
         # (spine, limbs, fingers) are rest-aligned.
-        if align_rests and not use_loc:
+        if align_rests and not use_loc and not t.startswith(_DELTA_ONLY):
             d_t = _rest_dir(rig, t)
             d_s = _rest_dir(src, s)
             if d_t is not None and d_s is not None:
-                d = C @ d_s
-                if t.startswith(_HEADING_PRESERVE):
-                    d = _match_heading(d_t, d)
-                R = d_t.rotation_difference(d).to_matrix() @ R
+                R = d_t.rotation_difference(C @ d_s).to_matrix() @ R
         rest_tgt[t] = R
     rest_tgt_loc = {t: _rest_world(rig, t).translation.copy() for _, t, _ in mapping}
     src_hips_rest = (_rest_world(src, hips_pair[0]).translation.copy()

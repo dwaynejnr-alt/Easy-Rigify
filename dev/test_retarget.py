@@ -188,29 +188,21 @@ if err_floor > 5e-3:
     fail(f"foot sank {err_floor:.4f} m below its rest height")
 ok("floor calibration: foot stays at the character's rest height")
 
-# foot heading: the source feet point ~35 deg outward, the character's point
-# straight — the retargeted foot must keep the CHARACTER's heading (yaw) and
-# take only the PITCH from the clip
-def yaw_deg(v):
-    return math.degrees(math.atan2(v.x, -v.y))
-
-d_char_rest = ((rig.matrix_world @ rig.data.bones["ORG-foot.L"].matrix_local)
-               .to_3x3() @ Vector((0, 1, 0))).normalized()
-d_src_rest = ((src.matrix_world.to_3x3()
-               @ (src.data.bones["mixamorig:LeftFoot"].tail_local
-                  - src.data.bones["mixamorig:LeftFoot"].head_local))).normalized()
-d_now = bone_dir(achieved(rig, "ORG-foot.L"))
-yaw_err = abs(yaw_deg(d_now) - yaw_deg(d_char_rest))
-pitch_err = abs(d_now.z - d_src_rest.z)
-print(f"  foot heading: char rest {yaw_deg(d_char_rest):.1f} deg, source "
-      f"{yaw_deg(d_src_rest):.1f} deg, retargeted {yaw_deg(d_now):.1f} deg; "
-      f"pitch err {pitch_err:.4f}")
-if yaw_err > 2.0:
-    fail(f"foot heading drifted {yaw_err:.1f} deg from the character's rest")
-if pitch_err > 0.03:
-    fail(f"foot pitch off by {pitch_err:.3f} from the clip")
-ok("foot keeps the character's heading, takes the clip's pitch "
-   "(no shin twist wind-up)")
+# feet are DELTA-ONLY: at the clip's rest frame the character's foot must sit
+# EXACTLY at its own rest orientation (sole flat on the floor) even though the
+# source feet are splayed 35 deg outward with a different pitch — matching
+# the clip's foot rest tilts the sole off the floor and Rigify's foot->shin
+# coupling renders that as shin twist
+M_foot_rest = (rig.matrix_world @ rig.data.bones["ORG-foot.L"].matrix_local)
+M_foot_now = achieved(rig, "ORG-foot.L")
+ang_foot = math.degrees(M_foot_now.to_quaternion().rotation_difference(
+    M_foot_rest.to_quaternion()).angle)
+ang_foot = min(ang_foot, 360 - ang_foot)
+print(f"  foot at clip-rest frame: {ang_foot:.3f} deg from the character's "
+      f"own rest orientation")
+if ang_foot > 1.0:
+    fail(f"foot rotated {ang_foot:.1f} deg off its rest at the neutral frame")
+ok("feet delta-only: sole stays flat at neutral (no toes-up, no shin twist)")
 
 # quaternion continuity: through the 240-deg turn, consecutive keyed
 # quaternions must never flip sign (dot >= 0) or joints spin the long way

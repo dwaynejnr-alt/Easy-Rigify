@@ -288,6 +288,27 @@ first (world-delta orientation error 0.000 deg at every turn frame,
 foot-vs-shin relative twist within 0.07 deg of the source), and the user
 confirmed bones-fine/mesh-twists before the IK observation surfaced.
 
+### Final foot semantics (2026-07-18, user-found root cause)
+
+User isolated it: the retargeted foot_fk was pitched UP (toes off the floor),
+and that constant foot rotation is what Rigify's foot->shin coupling renders
+as shin twist — clearing the foot rotation killed the twist. Root cause: the
+clip skeleton's foot rest PITCH is correct for ITS ankle height / foot shape,
+not the character's; aligning to it (even heading-preserved) tilts the sole.
+
+Feet/toes are now `_DELTA_ONLY` — like the torso pivot they keep the
+character's OWN rest entirely and receive only the clip's rotation deltas
+(heel strike / toe-off / turns still come through). The earlier
+heading-preserving alignment is removed. Test: at the clip's neutral frame
+the foot sits 0.000 deg from the character's rest despite source feet
+splayed 35 deg at a different pitch.
+
+Bone-category summary that emerged from all six rounds:
+- location carrier (torso)      -> delta-only (widget-convention pivot)
+- feet/toes                     -> delta-only (floor contact = character rest)
+- everything anatomical else    -> rest-aligned to the clip (Match Clip Pose)
+- visible IK controls           -> delta-snapped to their FK twin per frame
+
 Still open from the design: mapping UIList + JSON save/load, IK pole-vector
 keying (pole toggle ON rigs), batch retarget (Studio).
 

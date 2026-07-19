@@ -83,6 +83,59 @@ def _freeze_to_rest(context, arm):
     arm.animation_data_clear()              # drop drivers/actions too
 
 
+def _deform_parent_map(arm):
+    """For every deform bone, its correct ANATOMICAL parent within the deform
+    set — computed on the FULL hierarchy, before extraction.
+
+    Within a limb Rigify's DEF bones parent to each other, but ACROSS joints
+    they parent into the ORG/MCH mechanism layer (DEF-upper_arm.L's parent is
+    ORG-upper_arm.L, under ORG-shoulder.L...). Extraction deletes those, so
+    the upper arms, thighs, shoulders and toes fall to the root — invisible at
+    rest in Blender, but in-engine the clavicle/spine then doesn't carry the
+    arm and skinning looks broken. Walk each deform bone's original ancestors
+    and resolve every mechanism bone to its deform counterpart (ORG-shoulder.L
+    -> DEF-shoulder.L); the first hit is the anatomical parent."""
+    keep = {b.name for b in arm.data.bones if b.use_deform}
+    parent_of = {}
+    for b in arm.data.bones:
+        if b.name not in keep:
+            continue
+        p = b.parent
+        while p is not None:
+            core = p.name
+            for pref in ("DEF-", "ORG-", "MCH-"):
+                if core.startswith(pref):
+                    core = core[len(pref):]
+                    break
+            for cand in (p.name, "DEF-" + core, core):
+                if cand in keep and cand != b.name:
+                    parent_of[b.name] = cand
+                    break
+            if b.name in parent_of:
+                break
+            p = p.parent
+    return parent_of
+
+
+def _reparent_orphans(context, arm, parent_of):
+    """Re-attach deform bones orphaned by extraction to their anatomical
+    parent (from _deform_parent_map). Returns the number reattached."""
+    context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode='EDIT')
+    ebs = arm.data.edit_bones
+    n = 0
+    for eb in ebs:
+        if eb.parent is not None:
+            continue
+        target = parent_of.get(eb.name)
+        if target and target in ebs and target != eb.name:
+            eb.use_connect = False
+            eb.parent = ebs[target]
+            n += 1
+    bpy.ops.object.mode_set(mode='OBJECT')
+    return n
+
+
 def _keep_deform_bones(context, arm):
     """Keep only the bones that actually skin the mesh (use_deform=True). This is
     the DEF- bones PLUS Rigify's neck and head, which deform directly and carry no
@@ -504,8 +557,10 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
     clean.name = "GAME_SKELETON"
     clean.animation_data_clear()
     face_set = _face_deform_bones(clean) if strip_face else set()
+    parent_map = _deform_parent_map(clean)   # read the FULL hierarchy first
     _freeze_to_rest(context, clean)      # remove constraints BEFORE stripping bones
     _keep_deform_bones(context, clean)
+    n_reparented = _reparent_orphans(context, clean, parent_map)
 
     # 2. duplicate meshes, repoint their armature modifier at the clean skeleton
     dup_meshes = []
@@ -572,7 +627,8 @@ def build_and_export(context, filepath, target='UNITY', keep_in_scene=False,
 
     stats = {"bones": len(clean.data.bones), "merged": n_merged,
              "meshes": len(dup_meshes), "frames": n_frames,
-             "face_stripped": n_face, "actions": n_actions}
+             "face_stripped": n_face, "actions": n_actions,
+             "reparented": n_reparented}
 
     # 6. export selection
     for o in context.selected_objects:

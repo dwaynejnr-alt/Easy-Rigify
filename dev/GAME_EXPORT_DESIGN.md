@@ -230,9 +230,32 @@ the head, so the face follows the head rigidly. Two hard-won details:
   `Action.fcurves` removed (slotted actions) → `_act_fcurves` walks
   layers/strips/channelbags.
 
+### Anatomical hierarchy fix (2026-07-18, user found in Unreal/Unity)
+
+In-engine, the clavicle/spine didn't carry the arm and the thigh fell off the
+pelvis; the toe bone was missing and skinning looked broken. Root cause: WITHIN
+a limb Rigify's DEF bones parent to each other (forearm->upper_arm — why the
+spike passed), but ACROSS joints they parent through the ORG/MCH mechanism
+layer (DEF-upper_arm.L's parent is ORG-upper_arm.L under ORG-shoulder.L...).
+Extraction deletes the mechanism bones, so `_add_root` dropped every limb head,
+shoulder and toe (97 bones) straight onto root. Invisible in Blender (rest pose
++ our world-space bakes) but the engine skeleton was flat — posing a parent
+didn't move its child, and the mesh followed the flat skeleton.
+
+Fix: `_deform_parent_map` reads each deform bone's true parent from the FULL
+hierarchy BEFORE extraction (walk original ancestors, resolve each ORG-/MCH-
+bone to its DEF- counterpart, first hit wins); `_reparent_orphans` reattaches
+them after extraction, before merge. Verified: upperarm<-clavicle<-spine,
+thigh<-pelvis, ball<-foot; only pelvis sits under root. This also restored the
+toe and the perceived "bad weights" (the toe/foot verts were pulling to a
+root-parented bone). Test: hierarchy assertion in test_anim_bake.py.
+
 ### Remaining refinements
 
-- In-engine validation of the FBX scale/axis matrices (in progress, user).
+- In-engine re-validation after the hierarchy fix (user).
+- Weight normalization on export IF partial-weight reports persist after the
+  hierarchy fix (Blender auto-weight leaves some verts <1.0; our Heat Map
+  pipeline normalizes, so only unnormalized source meshes would show it).
 
 ## Tier fit (DECIDED 2026-07-18)
 

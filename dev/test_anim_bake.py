@@ -129,6 +129,39 @@ if not (clean.animation_data and clean.animation_data.action):
 ok(f"baked action: {clean.animation_data.action.name}, "
    f"{len(act_fcurves(clean.animation_data.action))} fcurves")
 
+# ── anatomical parent chain must survive extraction (the in-engine bug: the
+# clavicle/spine didn't carry the arm, thigh fell off the pelvis). Across
+# joints Rigify parents DEF bones through the ORG/MCH mechanism layer, which
+# extraction deletes — every limb head, shoulder and toe must be reattached
+# to its real deform parent, not dropped onto root.
+def parent_name(cl, bn):
+    b = cl.data.bones.get(bn)
+    return b.parent.name if (b and b.parent) else None
+
+# UE names on this export: upperarm_l <- clavicle_l <- (spine chain) ; the
+# leg: thigh_l <- pelvis ; toe: ball_l <- foot_l
+expected = {
+    "upperarm_l": "clavicle_l", "upperarm_r": "clavicle_r",
+    "lowerarm_l": "upperarm_l", "hand_l": "lowerarm_l",
+    "thigh_l": "pelvis", "thigh_r": "pelvis",
+    "calf_l": "thigh_l", "foot_l": "calf_l", "ball_l": "foot_l",
+}
+for child, par in expected.items():
+    got = parent_name(clean, child)
+    if got != par:
+        fail(f"hierarchy: {child} parents to {got!r}, expected {par!r}")
+# clavicle must land on the spine chain, and NOTHING but pelvis/root may sit
+# directly under root
+clav_par = parent_name(clean, "clavicle_l")
+if not (clav_par and clav_par.startswith(("spine", "pelvis"))):
+    fail(f"hierarchy: clavicle_l parents to {clav_par!r}, expected a spine bone")
+under_root = {b.name for b in clean.data.bones
+              if b.parent and b.parent.name == "root"}
+if under_root - {"pelvis"}:
+    fail(f"hierarchy: bones wrongly parented to root: {under_root - {'pelvis'}}")
+ok(f"anatomical hierarchy intact ({stats['reparented']} bones reparented; "
+   f"arm chain under clavicle under {clav_par}, legs under pelvis)")
+
 # ── the baked lowerarm_l must track DEF-forearm.L's world position
 for frame in (1, 20):
     bpy.context.scene.frame_set(frame)

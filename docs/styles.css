@@ -264,6 +264,46 @@ thead { background-color: #f6f8fa; }
     .toc-list .desc { color: #8b949e; }
 }
 
+/* ── Upcoming-features preview ── */
+
+.upcoming {
+    margin-top: 2.5rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px dashed #d29922;
+    border-radius: 8px;
+    background-color: #fffbeb;
+}
+
+@media (prefers-color-scheme: dark) {
+    .upcoming {
+        background-color: #2a2410;
+        border-color: #9e6a03;
+    }
+}
+
+.upcoming h2 {
+    margin-top: 0;
+}
+
+.badge-soon {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background-color: #d29922;
+    color: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+    .badge-soon {
+        background-color: #9e6a03;
+    }
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 800px) {

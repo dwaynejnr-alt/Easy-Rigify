@@ -152,6 +152,35 @@
 
                 <p><strong>Report</strong> — prints a statistics report for the selected vertex group to the System Console: total influenced vertices, percentage, min/max weight, mean, standard deviation, and number of islands. Use for understanding how well a bone's weight distribution spans the mesh.</p>
             </section>
+
+            <section id="upcoming" class="upcoming">
+                <h2>Coming in the Next Update <span class="badge-soon">UPCOMING</span></h2>
+                <p class="intro">The features below are in development for the next release. They are <strong>not part of the current version</strong> — this is a preview of what's ahead.</p>
+
+                <h3>Game Engine Export (Unity &amp; Unreal)</h3>
+                <p>One click turns your generated Rigify rig and skinned meshes into a clean, engine-ready FBX — without touching your working scene.</p>
+                <ul>
+                    <li><strong>Clean game skeleton</strong> — only the deform bones, single root, correct parent chain (clavicle drives the arm, pelvis drives the legs)</li>
+                    <li><strong>Engine naming</strong> — UE5 Mannequin names for Unreal (<code>upperarm_l</code>, <code>calf_r</code>, <code>spine_01</code>...) or clean stripped names for Unity Humanoid/Generic</li>
+                    <li><strong>Animation export</strong> — bake the current action, or every action in the file as its own clip in one FBX</li>
+                    <li><strong>Preserve Twist Bones</strong> (Unreal) — keep the limb twist segments as UE Mannequin twist bones for full deformation quality</li>
+                    <li><strong>Strip Face Bones</strong> — drop the face rig (60+ bones) and fold its weights into the head for game characters that use blend shapes</li>
+                </ul>
+
+                <h3>Animation Retargeting</h3>
+                <p>Drop external animation clips onto your rigged character. Import a clip, pick its armature, click Retarget — the motion lands on your rig's normal controls as an editable action.</p>
+                <ul>
+                    <li><strong>Automatic bone mapping</strong> with presets for Mixamo, DAZ (Genesis 3/8/9), VRoid/VRM, Rokoko, and CMU BVH mocap — plus smart name matching for anything else (Character Creator, UE Mannequin...)</li>
+                    <li><strong>Mapping editor</strong> — review and adjust every bone pair, save/load mappings as files for reuse across a clip library</li>
+                    <li><strong>Match Clip Pose</strong> — a T-pose clip lands correctly even on an A-pose character; facing and scale differences handled automatically</li>
+                    <li><strong>Works in FK and IK</strong> — the IK controllers are baked along with the motion, so you can polish feet with IK right after retargeting</li>
+                    <li><strong>In Place</strong> toggle for game loops, and <strong>Batch Retarget</strong> — point at a folder of clips and get one named action per file</li>
+                </ul>
+
+                <div class="note">
+                    These features will appear in the Tools tab when the update ships. Animation Retargeting will be a full-edition feature; Game Export will be available in both editions.
+                </div>
+            </section>
         </div>
     </div>
 </body>

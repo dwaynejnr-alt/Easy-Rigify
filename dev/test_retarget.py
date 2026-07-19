@@ -403,6 +403,106 @@ for need in ("torso", "shoulder.L", "upper_arm_fk.L", "forearm_fk.L",
 ok(f"fuzzy mapping resolved Character Creator names (infix _L_/_R_): "
    f"{len(m3)} pairs, arms AND legs both sides")
 
+# ── 5b. new presets: DAZ / VRoid / Rokoko-HIK / CMU BVH ─────────────────────
+def spine_chain_bones(names_heads):
+    """Build a simple vertical chain + one arm/leg/finger set for mapping
+    tests — geometry is irrelevant, only names matter."""
+    out = []
+    z = 0.9
+    parent = None
+    for n in names_heads:
+        out.append((n, (0, 0, z), (0, 0, z + 0.1), parent))
+        parent = n
+        z += 0.1
+    return out
+
+def check_preset(label, bones, expect, expect_preset):
+    obj = build_armature(label, bones)
+    p_name, _t, n_hits = rt.detect_preset(obj)
+    if n_hits >= 4 and p_name != expect_preset:
+        fail(f"{label}: detected preset {p_name!r}, expected {expect_preset!r}")
+    m = rt.build_mapping(obj, rig)
+    tgts = {t for _, t, _ in m}
+    missing = [t for t in expect
+               if not (t in tgts if isinstance(t, str)
+                       else any(x in tgts for x in t))]
+    if missing:
+        print(f"  {label} mapped: {sorted(tgts)}")
+        fail(f"{label}: mapping missed {missing}")
+    if not any(loc for _, t, loc in m if t == "torso"):
+        fail(f"{label}: torso is not the location carrier")
+    bpy.data.objects.remove(obj, do_unlink=True)
+    ok(f"{label}: {len(m)} pairs via {p_name} preset")
+
+CORE = ["torso", "spine_fk.001", "neck", "head", "shoulder.L",
+        "upper_arm_fk.L", "forearm_fk.L", "hand_fk.L",
+        "thigh_fk.L", "shin_fk.L", "foot_fk.L"]
+
+# DAZ Genesis 8-style (lShldrBend, lThumb1, twist bones must map to nothing)
+daz = spine_chain_bones(["hip", "abdomenLower", "abdomenUpper", "chestLower",
+                         "chestUpper", "neckLower", "head"])
+daz += [
+    ("lCollar",      (0.02, 0, 1.4), (0.08, 0, 1.4), "chestUpper"),
+    ("lShldrBend",   (0.08, 0, 1.4), (0.2, 0, 1.4),  "lCollar"),
+    ("lShldrTwist",  (0.2, 0, 1.4),  (0.3, 0, 1.4),  "lShldrBend"),
+    ("lForearmBend", (0.3, 0, 1.4),  (0.4, 0, 1.4),  "lShldrTwist"),
+    ("lHand",        (0.4, 0, 1.4),  (0.5, 0, 1.4),  "lForearmBend"),
+    ("lThumb1",      (0.5, 0, 1.38), (0.52, 0, 1.37), "lHand"),
+    ("lThumb2",      (0.52, 0, 1.37), (0.54, 0, 1.36), "lThumb1"),
+    ("lThighBend",   (0.09, 0, 0.9), (0.09, 0, 0.5),  "hip"),
+    ("lShin",        (0.09, 0, 0.5), (0.09, 0, 0.1),  "lThighBend"),
+    ("lFoot",        (0.09, 0, 0.1), (0.09, -0.1, 0), "lShin"),
+]
+check_preset("DAZ-G8", daz, CORE + ["thumb.01.L", "thumb.02.L"], "DAZ")
+
+# VRoid FBX-style (J_Bip_*, infix side, numbered fingers)
+vroid = spine_chain_bones(["J_Bip_C_Hips", "J_Bip_C_Spine", "J_Bip_C_Chest",
+                           "J_Bip_C_UpperChest", "J_Bip_C_Neck", "J_Bip_C_Head"])
+vroid += [
+    ("J_Bip_L_Shoulder", (0.02, 0, 1.4), (0.08, 0, 1.4), "J_Bip_C_UpperChest"),
+    ("J_Bip_L_UpperArm", (0.08, 0, 1.4), (0.3, 0, 1.4),  "J_Bip_L_Shoulder"),
+    ("J_Bip_L_LowerArm", (0.3, 0, 1.4),  (0.5, 0, 1.4),  "J_Bip_L_UpperArm"),
+    ("J_Bip_L_Hand",     (0.5, 0, 1.4),  (0.6, 0, 1.4),  "J_Bip_L_LowerArm"),
+    ("J_Bip_L_Index1",   (0.6, 0, 1.39), (0.62, 0, 1.38), "J_Bip_L_Hand"),
+    ("J_Bip_L_UpperLeg", (0.09, 0, 0.9), (0.09, 0, 0.5), "J_Bip_C_Hips"),
+    ("J_Bip_L_LowerLeg", (0.09, 0, 0.5), (0.09, 0, 0.1), "J_Bip_L_UpperLeg"),
+    ("J_Bip_L_Foot",     (0.09, 0, 0.1), (0.09, -0.1, 0), "J_Bip_L_LowerLeg"),
+]
+check_preset("VRoid", vroid, CORE + ["f_index.01.L"], "VRoid/VRM")
+
+# Rokoko/HIK-style (Mixamo body names without prefix, Proximal/Medial/Distal
+# fingers, Spine3)
+rokoko = spine_chain_bones(["Hips", "Spine", "Spine1", "Spine2", "Spine3",
+                            "Neck", "Head"])
+rokoko += [
+    ("LeftShoulder", (0.02, 0, 1.4), (0.08, 0, 1.4), "Spine3"),
+    ("LeftArm",      (0.08, 0, 1.4), (0.3, 0, 1.4),  "LeftShoulder"),
+    ("LeftForeArm",  (0.3, 0, 1.4),  (0.5, 0, 1.4),  "LeftArm"),
+    ("LeftHand",     (0.5, 0, 1.4),  (0.6, 0, 1.4),  "LeftForeArm"),
+    ("LeftThumbProximal", (0.6, 0, 1.38), (0.62, 0, 1.37), "LeftHand"),
+    ("LeftThumbMedial",   (0.62, 0, 1.37), (0.64, 0, 1.36), "LeftThumbProximal"),
+    ("LeftUpLeg",    (0.09, 0, 0.9), (0.09, 0, 0.5),  "Hips"),
+    ("LeftLeg",      (0.09, 0, 0.5), (0.09, 0, 0.1),  "LeftUpLeg"),
+    ("LeftFoot",     (0.09, 0, 0.1), (0.09, -0.1, 0), "LeftLeg"),
+]
+check_preset("Rokoko", rokoko,
+             CORE + ["thumb.01.L", "thumb.02.L", "chest"], "Mixamo")
+
+# classic CMU BVH (asf-converted names: lhumerus, lfemur, thorax)
+cmu = spine_chain_bones(["hips", "lowerback", "upperback", "thorax",
+                         "lowerneck", "head"])
+cmu += [
+    ("lclavicle", (0.02, 0, 1.4), (0.08, 0, 1.4), "thorax"),
+    ("lhumerus",  (0.08, 0, 1.4), (0.3, 0, 1.4),  "lclavicle"),
+    ("lradius",   (0.3, 0, 1.4),  (0.5, 0, 1.4),  "lhumerus"),
+    ("lwrist",    (0.5, 0, 1.4),  (0.6, 0, 1.4),  "lradius"),
+    ("lfemur",    (0.09, 0, 0.9), (0.09, 0, 0.5),  "hips"),
+    ("ltibia",    (0.09, 0, 0.5), (0.09, 0, 0.1),  "lfemur"),
+    ("lfoot",     (0.09, 0, 0.1), (0.09, -0.1, 0), "ltibia"),
+    ("ltoes",     (0.09, -0.1, 0), (0.09, -0.15, 0), "lfoot"),
+]
+check_preset("CMU", cmu, CORE + [("toe_fk.L", "toe.L")], "CMU BVH")
+
 # ── 6. custom-mapping plumbing: pairs -> validated/ordered, JSON round-trip ──
 import os, tempfile
 pairs = [(s, t) for s, t, _ in mapping]           # from the Mixamo mapping

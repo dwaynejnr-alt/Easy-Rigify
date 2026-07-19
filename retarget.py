@@ -39,11 +39,27 @@ def _sided(base_map):
     return out
 
 
+def _sided_pre(base_map, left, right):
+    """Expand with arbitrary side prefixes: _sided_pre({...}, 'l', 'r') turns
+    'Collar' into lCollar -> .L / rCollar -> .R (DAZ), 'l_' for Genesis 9,
+    'left'/'right' for VRM-humanoid camelCase names."""
+    out = {}
+    for src, tgts in base_map.items():
+        out[left + src] = tuple(t + ".L" for t in tgts)
+        out[right + src] = tuple(t + ".R" for t in tgts)
+    return out
+
+
+_FINGER_SEG = (("Thumb", "thumb"), ("Index", "f_index"), ("Middle", "f_middle"),
+               ("Ring", "f_ring"), ("Pinky", "f_pinky"), ("Little", "f_pinky"))
+
+# ── Mixamo family (also Rokoko/HIK-style exports, CGSpeed CMU conversions) ──
 _MIXAMO_CENTER = {
     "Hips":   ("torso",),
     "Spine":  ("spine_fk.001",),
     "Spine1": ("spine_fk.002",),
     "Spine2": ("spine_fk.003", "chest"),
+    "Spine3": ("chest", "spine_fk.003"),
     "Neck":   ("neck",),
     "Head":   ("head",),
 }
@@ -56,17 +72,144 @@ _MIXAMO_SIDED = _sided({
     "Leg":      ("shin_fk",),
     "Foot":     ("foot_fk",),
     "ToeBase":  ("toe_fk", "toe"),
-    # fingers: HandThumb1 -> thumb.01, HandIndex2 -> f_index.02, ...
+    # Mixamo fingers: HandThumb1 -> thumb.01, HandIndex2 -> f_index.02, ...
     **{f"Hand{m_f}{i}": (f"{r_f}.0{i}",)
-       for m_f, r_f in (("Thumb", "thumb"), ("Index", "f_index"),
-                        ("Middle", "f_middle"), ("Ring", "f_ring"),
-                        ("Pinky", "f_pinky"))
-       for i in (1, 2, 3)},
+       for m_f, r_f in _FINGER_SEG for i in (1, 2, 3)},
+    # Rokoko/HIK fingers: ThumbProximal/Medial/Distal (+ Intermediate variant)
+    **{f"{m_f}{seg}": (f"{r_f}.0{i}",)
+       for m_f, r_f in _FINGER_SEG
+       for seg, i in (("Proximal", 1), ("Medial", 2), ("Intermediate", 2),
+                      ("Distal", 3))},
 })
 _MIXAMO = {**_MIXAMO_CENTER, **_MIXAMO_SIDED}
 
-# The one pair that copies translation.
-_HIPS_SOURCES = {"Hips"}
+# ── DAZ Genesis (3/8: lShldrBend; 1/2: lShldr; 9: l_upperarm) ───────────────
+_DAZ_CENTER = {
+    "hip":          ("torso",),
+    "abdomenLower": ("spine_fk.001",), "abdomen":  ("spine_fk.001",),
+    "abdomenUpper": ("spine_fk.002",), "abdomen2": ("spine_fk.002",),
+    "chestLower":   ("spine_fk.003",), "chest":    ("spine_fk.003", "chest"),
+    "chestUpper":   ("chest", "spine_fk.003"),
+    "neckLower":    ("neck",),         "neck":     ("neck",),
+    "head":         ("head",),
+    # Genesis 9 spine chain
+    "spine1": ("spine_fk.001",), "spine2": ("spine_fk.002",),
+    "spine3": ("spine_fk.003",), "spine4": ("chest", "spine_fk.003"),
+    "neck1":  ("neck",),
+}
+_DAZ_FINGERS = {
+    **{f"{f}{i}": (f"{r}.0{i}",)
+       for f, r in (("Thumb", "thumb"), ("Index", "f_index"),
+                    ("Mid", "f_middle"), ("Ring", "f_ring"),
+                    ("Pinky", "f_pinky"))
+       for i in (1, 2, 3)},
+}
+_DAZ_G9_FINGERS = {
+    **{f"{f}{i}": (f"{r}.0{i}",)
+       for f, r in (("thumb", "thumb"), ("index", "f_index"),
+                    ("mid", "f_middle"), ("ring", "f_ring"),
+                    ("pinky", "f_pinky"))
+       for i in (1, 2, 3)},
+}
+_DAZ = {
+    **_DAZ_CENTER,
+    **_sided_pre({
+        "Collar":      ("shoulder",),
+        "ShldrBend":   ("upper_arm_fk",), "Shldr":   ("upper_arm_fk",),
+        "ForearmBend": ("forearm_fk",),   "ForeArm": ("forearm_fk",),
+        "Hand":        ("hand_fk",),
+        "ThighBend":   ("thigh_fk",),     "Thigh":   ("thigh_fk",),
+        "Shin":        ("shin_fk",),
+        "Foot":        ("foot_fk",),
+        "Toe":         ("toe_fk", "toe"),
+        **_DAZ_FINGERS,
+    }, "l", "r"),
+    **_sided_pre({
+        "shoulder": ("shoulder",),
+        "upperarm": ("upper_arm_fk",),
+        "forearm":  ("forearm_fk",),
+        "hand":     ("hand_fk",),
+        "thigh":    ("thigh_fk",),
+        "shin":     ("shin_fk",),
+        "foot":     ("foot_fk",),
+        "toes":     ("toe_fk", "toe"),
+        **_DAZ_G9_FINGERS,
+    }, "l_", "r_"),
+}
+
+# ── VRoid FBX (J_Bip_*) + VRM humanoid standard names ───────────────────────
+_VRM_LIMBS = {
+    "Shoulder": ("shoulder",),
+    "UpperArm": ("upper_arm_fk",),
+    "LowerArm": ("forearm_fk",),
+    "Hand":     ("hand_fk",),
+    "UpperLeg": ("thigh_fk",),
+    "LowerLeg": ("shin_fk",),
+    "Foot":     ("foot_fk",),
+    "ToeBase":  ("toe_fk", "toe"), "Toes": ("toe_fk", "toe"),
+}
+# VRoid numbers its fingers 1-3; VRM-humanoid uses joint words. Thumb: VRM 1.x
+# has Metacarpal/Proximal/Distal, VRM 0.x Proximal/Intermediate/Distal — the
+# candidate cascade resolves both (metacarpal, listed first in the skeleton,
+# claims thumb.01 when present; proximal then falls through to thumb.02).
+_VRM_FINGERS = {
+    **{f"{f}{i}": (f"{r}.0{i}",)
+       for f, r in (("Thumb", "thumb"), ("Index", "f_index"),
+                    ("Middle", "f_middle"), ("Ring", "f_ring"),
+                    ("Little", "f_pinky"))
+       for i in (1, 2, 3)},
+    "ThumbMetacarpal": ("thumb.01",),
+    "ThumbProximal":   ("thumb.01", "thumb.02"),
+    "ThumbIntermediate": ("thumb.02", "thumb.03"),
+    "ThumbDistal":     ("thumb.03",),
+    **{f"{f}{seg}": (f"{r}.0{i}",)
+       for f, r in (("Index", "f_index"), ("Middle", "f_middle"),
+                    ("Ring", "f_ring"), ("Little", "f_pinky"))
+       for seg, i in (("Proximal", 1), ("Intermediate", 2), ("Distal", 3))},
+}
+_VRM = {
+    "J_Bip_C_Hips":       ("torso",),
+    "J_Bip_C_Spine":      ("spine_fk.001",),
+    "J_Bip_C_Chest":      ("spine_fk.002",),
+    "J_Bip_C_UpperChest": ("spine_fk.003", "chest"),
+    "J_Bip_C_Neck":       ("neck",),
+    "J_Bip_C_Head":       ("head",),
+    "hips": ("torso",), "spine": ("spine_fk.001",),
+    "chest": ("spine_fk.002",), "upperChest": ("spine_fk.003", "chest"),
+    "neck": ("neck",), "head": ("head",),
+    **_sided_pre({**_VRM_LIMBS, **_VRM_FINGERS}, "J_Bip_L_", "J_Bip_R_"),
+    **_sided_pre({**_VRM_LIMBS, **_VRM_FINGERS}, "left", "right"),
+}
+
+# ── Classic CMU BVH (asf-converted: lhumerus, lfemur, thorax...) ────────────
+_CMU = {
+    "hips":      ("torso",),
+    "lowerback": ("spine_fk.001",),
+    "upperback": ("spine_fk.002",),
+    "thorax":    ("spine_fk.003", "chest"),
+    "lowerneck": ("neck",),
+    "head":      ("head",),
+    **_sided_pre({
+        "clavicle": ("shoulder",),
+        "humerus":  ("upper_arm_fk",),
+        "radius":   ("forearm_fk",),
+        "wrist":    ("hand_fk",),
+        "hand":     ("hand_fk",),
+        "femur":    ("thigh_fk",),
+        "tibia":    ("shin_fk",),
+        "foot":     ("foot_fk",),
+        "toes":     ("toe_fk", "toe"),
+    }, "l", "r"),
+}
+
+# Scored against the source skeleton; best-matching table wins (order breaks
+# ties). Fuzzy then supplements whatever the preset left unmapped.
+_PRESETS = (
+    ("Mixamo", _MIXAMO),
+    ("DAZ", _DAZ),
+    ("VRoid/VRM", _VRM),
+    ("CMU BVH", _CMU),
+)
 
 
 def _strip_prefix(name):
@@ -97,6 +240,10 @@ _FUZZY_RULES = [
     (("toe",),                              ("toe_fk", "toe"),         True,  False),
 ]
 _FINGER_TOKENS = ("thumb", "index", "middle", "ring", "pinky", "finger")
+# SIDED twist/roll helpers must never grab a limb target from fuzzy matching
+# (DAZ lShldrTwist, Genesis 9 l_upperarmtwist1, UE upperarm_twist_01_l...).
+# Centre bones keep matching — Character Creator's real neck is NeckTwist01.
+_TWIST_TOKENS = ("twist", "roll")
 
 
 def _norm(name):
@@ -132,41 +279,61 @@ def _first_existing(rig, candidates, used=()):
     return None
 
 
+def detect_preset(src):
+    """(preset_name, table, matches) for the best-scoring source-name preset,
+    or (None, None, 0) when nothing recognizable matches."""
+    best_name, best_table, best_n = None, None, 0
+    for name, table in _PRESETS:
+        n = sum(1 for b in src.data.bones if _strip_prefix(b.name) in table)
+        if n > best_n:
+            best_name, best_table, best_n = name, table, n
+    return best_name, best_table, best_n
+
+
 def build_mapping(src, rig):
-    """[(src_bone, tgt_control, use_location)], parents-first. Tries the Mixamo
-    preset, falls back to fuzzy synonyms when the preset barely matches."""
+    """[(src_bone, tgt_control, use_location)], parents-first. The best-scoring
+    name preset (Mixamo/DAZ/VRM/CMU) maps what it recognizes; fuzzy synonym
+    matching then supplements whatever is left (and carries unknown skeletons
+    entirely). The 'torso' target is the location carrier."""
     mapping = []
     used_tgt = set()
+    mapped_src = set()
 
-    # preset pass
-    for b in src.data.bones:
-        core = _strip_prefix(b.name)
-        tgts = _MIXAMO.get(core)
-        if not tgts:
-            continue
-        tgt = _first_existing(rig, tgts, used_tgt)
-        if tgt:
-            mapping.append((b.name, tgt, core in _HIPS_SOURCES))
-            used_tgt.add(tgt)
-
-    if len(mapping) < 4:                      # not a Mixamo-style skeleton
-        mapping, used_tgt = [], set()
+    _name, table, n_hits = detect_preset(src)
+    if table is not None and n_hits >= 4:
         for b in src.data.bones:
-            n = _norm(b.name)
-            if any(t in n for t in _FINGER_TOKENS):
-                continue                      # fingers are preset-only
-            side = _side_of(b.name)
-            for syns, tgt_bases, sided, use_loc in _FUZZY_RULES:
-                if not any(s in n for s in syns):
-                    continue
-                if sided and side is None:
-                    break
-                cands = tuple(t + side for t in tgt_bases) if sided else tgt_bases
-                tgt = _first_existing(rig, cands, used_tgt)
-                if tgt:
-                    mapping.append((b.name, tgt, use_loc))
-                    used_tgt.add(tgt)
-                break                          # first matching rule only
+            tgts = table.get(_strip_prefix(b.name))
+            if not tgts:
+                continue
+            tgt = _first_existing(rig, tgts, used_tgt)
+            if tgt:
+                mapping.append((b.name, tgt, tgt == "torso"))
+                used_tgt.add(tgt)
+                mapped_src.add(b.name)
+
+    # fuzzy supplement: bones the preset didn't recognize (e.g. Genesis 9
+    # limb names beside preset-matched fingers), or the whole skeleton when
+    # no preset fits. Fingers and twist helpers stay preset-only.
+    for b in src.data.bones:
+        if b.name in mapped_src:
+            continue
+        n = _norm(b.name)
+        if any(t in n for t in _FINGER_TOKENS):
+            continue
+        side = _side_of(b.name)
+        if side is not None and any(t in n for t in _TWIST_TOKENS):
+            continue
+        for syns, tgt_bases, sided, _use_loc in _FUZZY_RULES:
+            if not any(s in n for s in syns):
+                continue
+            if sided and side is None:
+                break
+            cands = tuple(t + side for t in tgt_bases) if sided else tgt_bases
+            tgt = _first_existing(rig, cands, used_tgt)
+            if tgt:
+                mapping.append((b.name, tgt, tgt == "torso"))
+                used_tgt.add(tgt)
+            break                              # first matching rule only
 
     return order_mapping(rig, mapping)
 
@@ -924,9 +1091,8 @@ def draw_retarget_section(layout, context):
         col.label(text="Source armature has no animation", icon='ERROR')
         return
     f0, f1 = act.frame_range
-    n_preset = sum(1 for b in src.data.bones
-                   if _strip_prefix(b.name) in _MIXAMO)
-    kind = "Mixamo-style" if n_preset >= 4 else "name-matched"
+    p_name, _table, n_hits = detect_preset(src)
+    kind = f"{p_name} preset" if n_hits >= 4 else "name-matched"
     col.label(text=f"Clip: {act.name}  ({int(f1 - f0) + 1} frames, {kind})",
               icon='ACTION')
     col.prop(props, "align_rests")

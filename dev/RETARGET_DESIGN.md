@@ -327,7 +327,31 @@ after the file), and removes the imported source objects/actions. Honors the
 mapping editor (custom pairs apply to every clip) and the In Place / Match
 Clip Pose toggles. Team-tier gating happens at licensing level, not in code.
 
-Design complete — no open items.
+### Preset expansion (shipped 2026-07-18)
+
+`_PRESETS` — four scored name tables, best match wins (ties break in listed
+order), then a fuzzy SUPPLEMENT pass fills whatever the preset left unmapped
+(previously fuzzy only ran when the preset whiffed entirely):
+
+- **Mixamo family**: also covers Rokoko/HIK exports (same body names, no
+  prefix; fingers use Proximal/Medial/Intermediate/Distal) and CGSpeed CMU
+  conversions; Spine3->chest added.
+- **DAZ**: Genesis 3/8 (lShldrBend/lForearmBend/lThumb1, abdomenLower...),
+  Genesis 1/2 alternates (lShldr/lForeArm), Genesis 9 (l_upperarm, spine1-4,
+  l_thumb1) — G8's `l`-prefix camelCase names are unmatchable by fuzzy side
+  detection, hence the table.
+- **VRoid/VRM**: J_Bip_C_/L_/R_ FBX names AND VRM-humanoid standard names
+  (leftUpperArm...); thumb VRM0-vs-VRM1 joint naming resolved by candidate
+  cascade (Metacarpal claims thumb.01 when present, Proximal falls to .02).
+- **CMU BVH** (asf-converted): lhumerus/lradius/lfemur/ltibia, thorax etc.
+
+Gotcha: sided twist/roll helpers (lShldrTwist, l_upperarmtwist1) are excluded
+from the fuzzy supplement, but only SIDED ones — Character Creator's real
+neck bone is literally named NeckTwist01. Preset detection label shown in the
+UI ("DAZ preset", "CMU BVH preset", ...).
+
+Design complete — remaining candidates only if users ask: more presets
+(OptiTrack/Vicon raws), VRM-humanoid finger real-file validation.
 
 ## Effort estimate
 
